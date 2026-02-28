@@ -76,7 +76,6 @@ export function DashboardLayout() {
       default:
         return [
           { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-          { href: "/admin/staff", label: "Staff", icon: Briefcase },
           { href: "/admin/beneficiaries", label: "Beneficiaries", icon: Users },
           { href: "/admin/programs", label: "Programs", icon: Target },
           { href: "/admin/donors", label: "Donors", icon: Heart },
@@ -150,7 +149,7 @@ export function DashboardLayout() {
                 <AvatarFallback className="bg-white/10 text-white font-semibold">{initials}</AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-white truncate leading-tight group-hover:text-teal-300 transition-colors">{user?.fullName || 'User'}</p>
+                <p className="text-sm font-bold text-white truncate leading-tight">{user?.fullName || 'User'}</p>
                 <p className="text-[11px] text-white/50 truncate leading-tight uppercase tracking-wide">{currentUserType}</p>
               </div>
             </Link>

@@ -59,7 +59,7 @@ export default function BeneficiaryDashboard() {
       <div className="flex flex-col items-center justify-center p-10 text-center space-y-4">
         <h2 className="text-2xl font-bold">Welcome to LCEO</h2>
         <p className="text-muted-foreground">Please complete your profile to access the dashboard.</p>
-        <Button onClick={() => navigate('/profile')}>Create Profile</Button>
+        <Button onClick={() => navigate('/profile')}>Edit Profile</Button>
       </div>
     );
   }
@@ -95,7 +95,7 @@ export default function BeneficiaryDashboard() {
         actions={
           <Button
             className="bg-teal-600 hover:bg-teal-700 text-white shadow-md hover:shadow-lg transition-all"
-            onClick={() => navigate('/beneficiary/tracking/add')}
+            onClick={() => navigate('/beneficiary/tracking')}
           >
             <TrendingUp className="mr-2 h-4 w-4" />
             Log Weekly Progress

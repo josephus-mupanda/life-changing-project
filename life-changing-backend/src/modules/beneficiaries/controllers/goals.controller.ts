@@ -48,7 +48,36 @@ export class GoalsController {
     return this.goalsService.createGoal(beneficiary.id, createGoalDto);
   }
 
-  @Get()
+   @Get('stats')  // 👈 SPECIFIC ROUTE FIRST
+  @Roles(UserType.BENEFICIARY, UserType.ADMIN)
+  @ApiOperation({ summary: 'Get goal statistics' })
+  async getGoalStats(@CurrentBeneficiary() beneficiary: Beneficiary) {
+    return this.goalsService.getGoalStats(beneficiary.id);
+  }
+
+  @Get('type/:goalType')  // 👈 SPECIFIC ROUTE SECOND
+  @Roles(UserType.BENEFICIARY, UserType.ADMIN)
+  @ApiOperation({ summary: 'Get goals by type' })
+  async getGoalsByType(
+    @CurrentBeneficiary() beneficiary: Beneficiary,
+    @Param('goalType') goalType: GoalType,
+    @Query() paginationParams: PaginationParams
+  ) {
+    return this.goalsService.getGoalsByType(beneficiary.id, goalType, paginationParams);
+  }
+
+  @Get('status/:status')  // 👈 SPECIFIC ROUTE THIRD
+  @Roles(UserType.BENEFICIARY, UserType.ADMIN)
+  @ApiOperation({ summary: 'Get goals by status' })
+  async getGoalsByStatus(
+    @CurrentBeneficiary() beneficiary: Beneficiary,
+    @Param('status') status: GoalStatus,
+    @Query() paginationParams: PaginationParams
+  ) {
+    return this.goalsService.getGoalsByStatus(beneficiary.id, status, paginationParams);
+  }
+
+  @Get('/all')  // 👈 GENERIC ROUTE AFTER ALL SPECIFIC ONES
   @Roles(UserType.BENEFICIARY, UserType.ADMIN)
   @ApiOperation({ summary: 'Get goals' })
   @ApiQuery({ name: 'page', required: false })
@@ -60,29 +89,7 @@ export class GoalsController {
     return this.goalsService.getBeneficiaryGoals(beneficiary.id, paginationParams);
   }
 
-  @Get('type/:goalType')
-  @Roles(UserType.BENEFICIARY, UserType.ADMIN)
-  @ApiOperation({ summary: 'Get goals by type' })
-  async getGoalsByType(
-    @CurrentBeneficiary() beneficiary: Beneficiary,
-    @Param('goalType') goalType: GoalType,
-    @Query() paginationParams: PaginationParams
-  ) {
-    return this.goalsService.getGoalsByType(beneficiary.id, goalType, paginationParams);
-  }
-
-  @Get('status/:status')
-  @Roles(UserType.BENEFICIARY, UserType.ADMIN)
-  @ApiOperation({ summary: 'Get goals by status' })
-  async getGoalsByStatus(
-    @CurrentBeneficiary() beneficiary: Beneficiary,
-    @Param('status') status: GoalStatus,
-    @Query() paginationParams: PaginationParams
-  ) {
-    return this.goalsService.getGoalsByStatus(beneficiary.id, status, paginationParams);
-  }
-
-  @Put(':id/progress')
+  @Put(':id/progress')  // 👈 SPECIFIC PARAM ROUTE
   @Roles(UserType.BENEFICIARY, UserType.ADMIN)
   @ApiOperation({ summary: 'Update goal progress' })
   @ApiBody({ type: UpdateProgressDto })
@@ -95,14 +102,18 @@ export class GoalsController {
     return this.goalsService.updateGoalProgress(id, updateProgressDto.progress);
   }
 
-  @Get('stats')
+  @Get(':id')  // 👈 GENERIC PARAM ROUTE LAST
   @Roles(UserType.BENEFICIARY, UserType.ADMIN)
-  @ApiOperation({ summary: 'Get goal statistics' })
-  async getGoalStats(@CurrentBeneficiary() beneficiary: Beneficiary) {
-    return this.goalsService.getGoalStats(beneficiary.id);
+  @ApiOperation({ summary: 'Get goal by ID' })
+  async getGoalById(
+    @Param('id') id: string,
+    @CurrentBeneficiary() beneficiary: Beneficiary
+  ) {
+    await this.checkGoalOwnership(id, beneficiary.id);
+    return this.goalsService.findOne(id, ['beneficiary']);
   }
 
-  @Put(':id')
+  @Put(':id')  // 👈 GENERIC PARAM ROUTE LAST
   @Roles(UserType.BENEFICIARY, UserType.ADMIN)
   @ApiOperation({ summary: 'Update goal' })
   @ApiBody({ type: UpdateGoalDto })
@@ -115,7 +126,7 @@ export class GoalsController {
     return this.goalsService.update(id, updateGoalDto);
   }
 
-  @Delete(':id')
+  @Delete(':id')  // 👈 GENERIC PARAM ROUTE LAST
   @Roles(UserType.BENEFICIARY, UserType.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete goal' })
@@ -125,17 +136,6 @@ export class GoalsController {
   ) {
     await this.checkGoalOwnership(id, beneficiary.id);
     await this.goalsService.delete(id);
-  }
-
-  @Get(':id')
-  @Roles(UserType.BENEFICIARY, UserType.ADMIN)
-  @ApiOperation({ summary: 'Get goal by ID' })
-  async getGoalById(
-    @Param('id') id: string,
-    @CurrentBeneficiary() beneficiary: Beneficiary
-  ) {
-    await this.checkGoalOwnership(id, beneficiary.id);
-    return this.goalsService.findOne(id, ['beneficiary']);
   }
 
   private async checkGoalOwnership(goalId: string, beneficiaryId: string): Promise<void> {

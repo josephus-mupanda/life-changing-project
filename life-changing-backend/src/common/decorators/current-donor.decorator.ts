@@ -31,23 +31,7 @@ export const CurrentDonor = createParamDecorator(
       
       return donor;
     }
-    
-    // Handle ADMIN user type
-    if (request.user.userType === UserType.ADMIN) {
-      const donorId = request.query.donorId || request.body.donorId;
-      
-       if (!donorId) {
-        throw new NotFoundException('Donor ID is required for admin users');
-      }
-      
-      const donor = await donorsService.findDonorById(donorId);
-      
-      if (!donor) {
-        throw new NotFoundException(`Donor with ID ${donorId} not found`);
-      }
-      
-      return donor;
-    }
+  
     throw new NotFoundException(`User type '${request.user.userType}' not supported for donor operations`);
   },
 );

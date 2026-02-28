@@ -189,12 +189,12 @@ const ProgramForm = ({
             onChange={(value) => setFormData({ ...formData, description: { ...formData.description, en: value } })}
             placeholder="Write a detailed description in English..."
             height={200}
-            label="Description (English)"
+            required
           />
         </div>
 
         <div>
-          <Label htmlFor="descRw" className="text-xs font-medium text-slate-600 mb-2 block">Description (Kinyarwanda) *</Label>
+          <Label htmlFor="descRw" className="text-xs font-medium text-slate-600 mb-2 block">Description (Kinyarwanda)</Label>
           <RichTextEditor
             value={formData.description.rw}
             onChange={(value) => setFormData({ ...formData, description: { ...formData.description, rw: value } })}
@@ -289,15 +289,7 @@ const ProgramForm = ({
       </div>
     </div>
 
-    <div className="flex items-center justify-end gap-3 pt-6 border-t border-slate-100">
-      <Button variant="outline" type="button" onClick={onCancel} className="h-9 px-4 text-xs font-medium">
-        Cancel
-      </Button>
-      <Button type="submit" disabled={isSubmitting} className="h-9 px-5 bg-teal-600 hover:bg-teal-700 text-white text-xs font-medium">
-        {isSubmitting && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
-        {submitLabel}
-      </Button>
-    </div>
+    {/* Removed the footer buttons from here - they're now in the dialog */}
   </div>
 );
 
@@ -831,13 +823,67 @@ export function ProgramsPage() {
                 </CardContent>
               </Card>
             ) : viewMode === 'grid' ? (
-              /* Grid View */
+              /* Grid View with Homepage Design - Including Cover Image */
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <AnimatePresence mode="popLayout">
-                  {filteredPrograms.map((program) => {
-                    const categoryConfig = getCategoryConfig(program.category);
+                  {filteredPrograms.map((program, index) => {
+                    // Color schemes based on index to create visual variety (like homepage)
+                    const colorSchemes = [
+                      {
+                        primary: '#4FB1A1',      // Primary green
+                        secondary: '#eacfa2',     // Beige
+                        icon: '#4FB1A1',
+                        statusBg: '#4FB1A115',
+                        statusIcon: '#4FB1A1',
+                        dotColor: '#4FB1A1'
+                      },
+                      {
+                        primary: '#076c5b',      // Dark green
+                        secondary: '#4FB1A1',     // Primary green
+                        icon: '#076c5b',
+                        statusBg: '#076c5b15',
+                        statusIcon: '#076c5b',
+                        dotColor: '#076c5b'
+                      },
+                      {
+                        primary: '#eacfa2',      // Beige
+                        secondary: '#4FB1A1',     // Primary green
+                        icon: '#c4a56e',
+                        statusBg: '#eacfa225',
+                        statusIcon: '#c4a56e',
+                        dotColor: '#eacfa2'
+                      }
+                    ];
+
+                    const colors = colorSchemes[index % colorSchemes.length];
+
+                    // SVG paths for variety (like homepage)
+                    const svgPaths = [
+                      'M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3L1 9l11 6 9-4.91V17h2V9L12 3z',
+                      'M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-6 0h-4V4h4v2z',
+                      'M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z'
+                    ];
+
+                    const svgPath = svgPaths[index % svgPaths.length];
+
+                    // Extract program information
+                    const programName = program.name?.en || 'Program Name';
+                    const programDescription = program.description?.en || 'No description available.';
+
+                    // Create features based on program data (matches homepage style)
+                    const features = [
+                      `💰 Budget: ${formatCurrency(program.budget || 0)}`,
+                      `👥 Beneficiaries: ${program.beneficiaries?.length || 0}`,
+                      `📊 Projects: ${program.projects?.length || 0}`,
+                      program.sdgAlignment?.length ? `🎯 SDG: ${program.sdgAlignment.join(', ')}` : '🌍 Global Impact'
+                    ];
+
+                    // Get status configuration
                     const statusConfig = getStatusConfig(program.status);
+                    const statusLabel = statusConfig.label;
                     const StatusIcon = statusConfig.icon;
+
+                    // Calculate budget progress
                     const budgetProgress = program.budget > 0 ?
                       Math.min(((program.fundsUtilized || 0) / program.budget) * 100, 100) : 0;
 
@@ -845,59 +891,130 @@ export function ProgramsPage() {
                       <motion.div
                         key={program.id}
                         layout
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.9 }}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
                         transition={{ duration: 0.3 }}
+                        className="col-span-1 ftco-animate"
                       >
-                        <Card className="group h-full border border-slate-200 bg-white hover:shadow-2xl transition-all duration-500 overflow-hidden">
-                          {/* Cover Image */}
-                          <div className="relative h-40 overflow-hidden">
+                        {/* Main Card - Matches homepage design exactly with cover image */}
+                        <div
+                          className="program-card overflow-hidden"
+                          style={{
+                            borderRadius: '20px',
+                            boxShadow: '0 15px 40px rgba(18, 47, 43, 0.06)',
+                            border: 'none',
+                            height: '100%',
+                            position: 'relative',
+                            backgroundColor: '#ffffff',
+                            transition: 'transform 0.3s ease, box-shadow 0.3s ease'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'translateY(-5px)';
+                            e.currentTarget.style.boxShadow = '0 25px 50px rgba(18, 47, 43, 0.12)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.boxShadow = '0 15px 40px rgba(18, 47, 43, 0.06)';
+                          }}
+                        >
+                          {/* Cover Image Section - New addition */}
+                          <div className="position-relative" style={{ height: '160px', overflow: 'hidden' }}>
                             {program.coverImage ? (
                               <img
                                 src={program.coverImage}
-                                alt={program.name.en}
-                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                                alt={programName}
+                                style={{
+                                  width: '100%',
+                                  height: '100%',
+                                  objectFit: 'cover',
+                                  transition: 'transform 0.7s ease'
+                                }}
+                                className="program-cover-image"
+                                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+                                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
                               />
                             ) : (
-                              <div className="w-full h-full bg-white flex items-center justify-center">
-                                <Target className="w-12 h-12 text-slate-400" />
+                              <div
+                                style={{
+                                  width: '100%',
+                                  height: '100%',
+                                  background: `linear-gradient(135deg, ${colors.primary}20, ${colors.secondary}20)`,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center'
+                                }}
+                              >
+                                <Target size={48} color={colors.primary} style={{ opacity: 0.5 }} />
                               </div>
                             )}
 
-                            {/* Gradient Overlay */}
-                            <div className="absolute inset-0 bg-white" />
+                            {/* Gradient Overlay for better text visibility if needed */}
+                            <div
+                              style={{
+                                position: 'absolute',
+                                bottom: 0,
+                                left: 0,
+                                right: 0,
+                                height: '50%',
+                                background: 'linear-gradient(to top, rgba(0,0,0,0.3), transparent)',
+                                pointerEvents: 'none'
+                              }}
+                            />
 
-                            {/* Category Badge */}
-                            <div className="absolute top-3 left-3">
-                              <Badge className={cn(
-                                "px-2 py-1 text-[10px] font-bold uppercase tracking-wider border-0",
-                                categoryConfig.bg,
-                                categoryConfig.text
-                              )}>
-                                <span className="mr-1">{categoryConfig.icon}</span>
-                                {categoryConfig.label}
-                              </Badge>
+                            {/* Status Badge - Positioned on cover image */}
+                            <div
+                              className="position-absolute"
+                              style={{
+                                top: '12px',
+                                right: '12px',
+                                zIndex: 2
+                              }}
+                            >
+                              <div
+                                className="program-card-status px-3 py-1 d-flex align-items-center"
+                                style={{
+                                  backgroundColor: colors.statusBg,
+                                  borderRadius: '50px',
+                                  fontSize: '12px',
+                                  fontWeight: '700',
+                                  color: colors.statusIcon,
+                                  backdropFilter: 'blur(4px)',
+                                  border: '1px solid rgba(255,255,255,0.2)',
+                                  transition: 'transform 0.3s ease'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                              >
+                                <StatusIcon
+                                  size={12}
+                                  className="mr-2"
+                                  style={{ stroke: colors.statusIcon }}
+                                />
+                                {statusLabel}
+                              </div>
                             </div>
 
-                            {/* Status Badge */}
-                            <div className="absolute top-3 right-3">
-                              <Badge className={cn(
-                                "px-2 py-1 text-[10px] font-bold uppercase tracking-wider border-0",
-                                statusConfig.bg,
-                                statusConfig.text
-                              )}>
-                                <StatusIcon className="w-3 h-3 mr-1 inline-block" />
-                                {statusConfig.label}
-                              </Badge>
-                            </div>
-
-                            {/* Logo if exists */}
+                            {/* Logo - Positioned on cover image if exists */}
                             {program.logo && (
-                              <div className="absolute bottom-3 left-3">
-                                <Avatar className="h-10 w-10 ring-2 ring-white">
+                              <div
+                                className="position-absolute"
+                                style={{
+                                  bottom: '12px',
+                                  left: '12px',
+                                  zIndex: 2
+                                }}
+                              >
+                                <Avatar
+                                  className="h-10 w-10 ring-2 ring-white shadow-lg"
+                                  style={{
+                                    transition: 'transform 0.3s ease'
+                                  }}
+                                  onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+                                  onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                                >
                                   <AvatarImage src={program.logo} />
-                                  <AvatarFallback className="bg-teal-100 text-teal-800 text-xs">
+                                  <AvatarFallback className="bg-teal-100 text-teal-800 text-xs font-bold">
                                     {program.name.en.substring(0, 2).toUpperCase()}
                                   </AvatarFallback>
                                 </Avatar>
@@ -905,103 +1022,212 @@ export function ProgramsPage() {
                             )}
                           </div>
 
-                          <CardContent className="p-5">
-                            {/* Title & SDG */}
-                            <div className="mb-3">
-                              <h3 className="text-base font-bold text-slate-900 mb-1 line-clamp-1">
-                                {program.name.en}
-                              </h3>
-                              <div className="flex items-center gap-2">
-                                <Globe className="w-3 h-3 text-slate-400" />
-                                <span className="text-xs text-slate-500">
-                                  SDG: {program.sdgAlignment?.join(', ') || 'N/A'}
+                          {/* Dual color top border - Now below cover image */}
+                          <div className="program-card-border d-flex" style={{ height: '5px' }}>
+                            <div style={{ flex: 1, backgroundColor: colors.primary }}></div>
+                            <div style={{ flex: 1, backgroundColor: colors.secondary }}></div>
+                          </div>
+
+                          <div className="p-4">
+                            {/* Header with SVG Icon and Title */}
+                            <div className="d-flex align-items-center mb-3">
+                              <div className="mr-3 d-flex align-items-center justify-content-center" style={{
+                                width: '40px',
+                                height: '40px',
+                                flexShrink: 0
+                              }}>
+                                <svg
+                                  className="program-card-icon"
+                                  width="32"
+                                  height="32"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  style={{ transition: 'transform 0.3s ease' }}
+                                  onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+                                  onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                                >
+                                  <path d={svgPath} fill={colors.icon} />
+                                </svg>
+                              </div>
+                              <div>
+                                <h3 className="program-card-title mb-0" style={{
+                                  fontWeight: 800,
+                                  fontSize: '18px',
+                                  color: '#122f2b',
+                                  lineHeight: '1.2',
+                                  fontFamily: "'Poppins', sans-serif",
+                                  transition: 'color 0.3s ease'
+                                }}
+                                  onMouseEnter={(e) => e.currentTarget.style.color = '#17D1AC'}
+                                  onMouseLeave={(e) => e.currentTarget.style.color = '#122f2b'}>
+                                  {programName}
+                                </h3>
+                                <span className="program-card-subtitle" style={{
+                                  fontSize: '12px',
+                                  letterSpacing: '0.3px',
+                                  color: '#666',
+                                  fontWeight: 600
+                                }}>
+                                  {program.category?.replace(/_/g, ' ') || 'Program'}
                                 </span>
                               </div>
                             </div>
 
                             {/* Description */}
-                            <p className="text-xs text-slate-600 mb-4 line-clamp-2">
-                              {program.description.en || 'No description available.'}
+                            <p className="program-card-desc mb-3" style={{
+                              color: '#444',
+                              fontSize: '14px',
+                              lineHeight: '1.7',
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis'
+                            }}>
+                              {programDescription}
                             </p>
 
-                            {/* Stats Grid */}
-                            <div className="grid grid-cols-2 gap-3 mb-4">
-                              <div className="bg-slate-50 rounded-lg p-2">
-                                <div className="flex items-center gap-1 text-[10px] text-slate-500 mb-1">
-                                  <Users className="w-3 h-3" />
-                                  Beneficiaries
+                            {/* Features Section */}
+                            <div className="program-card-features-box mb-4 p-3" style={{
+                              backgroundColor: '#f9fbfb',
+                              borderRadius: '14px',
+                              border: '1px solid #eef2f2'
+                            }}>
+                              <h4 className="program-card-features-title mb-2" style={{
+                                fontSize: '13px',
+                                fontWeight: 700,
+                                color: '#122f2b',
+                                fontFamily: "'Poppins', sans-serif"
+                              }}>
+                                Key Details:
+                              </h4>
+                              <ul className="list-unstyled mb-0">
+                                {features.map((feature, fIndex) => (
+                                  <li key={fIndex} className="d-flex align-items-start mb-1" style={{ fontSize: '13px' }}>
+                                    <span
+                                      className="program-card-feature-dot mr-2 mt-1"
+                                      style={{
+                                        width: '6px',
+                                        height: '6px',
+                                        backgroundColor: colors.dotColor,
+                                        borderRadius: '50%',
+                                        flexShrink: 0,
+                                        display: 'inline-block',
+                                        transition: 'transform 0.3s ease'
+                                      }}
+                                      onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.5)'}
+                                      onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                                    />
+                                    <span className="program-card-feature-text" style={{
+                                      lineHeight: '1.5',
+                                      color: '#555'
+                                    }}>
+                                      {feature}
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+
+                            {/* Budget Progress Bar */}
+                            {program.budget > 0 && (
+                              <div className="mb-4">
+                                <div className="d-flex justify-content-between align-items-center mb-1">
+                                  <span style={{ fontSize: '12px', color: '#666' }}>Budget Progress</span>
+                                  <span style={{ fontSize: '12px', fontWeight: 600, color: colors.primary }}>
+                                    {Math.round(budgetProgress)}%
+                                  </span>
                                 </div>
-                                <span className="text-sm font-bold text-slate-900">
-                                  {program.beneficiaries?.length || 0}
-                                </span>
-                              </div>
-                              <div className="bg-slate-50 rounded-lg p-2">
-                                <div className="flex items-center gap-1 text-[10px] text-slate-500 mb-1">
-                                  <FolderKanban className="w-3 h-3" />
-                                  Projects
+                                <div className="w-100 bg-slate-200 rounded-pill" style={{ height: '4px', overflow: 'hidden' }}>
+                                  <div
+                                    style={{
+                                      width: `${budgetProgress}%`,
+                                      height: '100%',
+                                      backgroundColor: budgetProgress >= 75 ? colors.primary :
+                                        budgetProgress >= 50 ? '#3b82f6' :
+                                          budgetProgress >= 25 ? '#f59e0b' : '#f43f5e',
+                                      transition: 'width 0.3s ease'
+                                    }}
+                                  />
                                 </div>
-                                <span className="text-sm font-bold text-slate-900">
-                                  {program.projects?.length || 0}
-                                </span>
+                              </div>
+                            )}
+
+                            {/* Footer with Action Buttons */}
+                            <div className="d-flex justify-content-end align-items-center">
+                              {/* Admin Actions */}
+                              <div className="d-flex gap-2">
+                                {/* View Details Button */}
+                                <button
+                                  className="btn btn-sm d-flex align-items-center justify-content-center"
+                                  style={{
+                                    width: '32px',
+                                    height: '32px',
+                                    borderRadius: '8px',
+                                    backgroundColor: '#f0f9f7',
+                                    border: 'none',
+                                    color: colors.primary,
+                                    transition: 'all 0.2s ease'
+                                  }}
+                                  onClick={() => navigate(`/admin/programs/${program.id}`)}
+                                  title="View Details"
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                    e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.boxShadow = 'none';
+                                  }}
+                                >
+                                  <Eye size={16} />
+                                </button>
+
+                                {/* More Actions Dropdown */}
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <button
+                                      className="btn btn-sm d-flex align-items-center justify-content-center"
+                                      style={{
+                                        width: '32px',
+                                        height: '32px',
+                                        borderRadius: '8px',
+                                        backgroundColor: '#f8f9fa',
+                                        border: 'none',
+                                        color: '#666',
+                                        transition: 'all 0.2s ease'
+                                      }}
+                                      onMouseEnter={(e) => {
+                                        e.currentTarget.style.transform = 'translateY(-2px)';
+                                        e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        e.currentTarget.style.transform = 'translateY(0)';
+                                        e.currentTarget.style.boxShadow = 'none';
+                                      }}
+                                    >
+                                      <MoreVertical size={16} />
+                                    </button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="w-40">
+                                    <DropdownMenuItem onClick={() => { setSelectedProgram(program); setEditDialogOpen(true); }}>
+                                      <Edit className="w-4 h-4 mr-2" />
+                                      Edit
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      className="text-red-600"
+                                      onClick={() => handleDelete(program.id)}
+                                    >
+                                      <Trash2 className="w-4 h-4 mr-2" />
+                                      Delete
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                               </div>
                             </div>
-
-                            {/* Budget Progress */}
-                            <div className="space-y-2 mb-4">
-                              <div className="flex items-center justify-between text-xs">
-                                <span className="text-slate-500">Budget Progress</span>
-                                <span className="font-medium text-slate-900">
-                                  {Math.round(budgetProgress)}%
-                                </span>
-                              </div>
-                              <Progress
-                                value={budgetProgress}
-                                className={cn(
-                                  "h-1.5",
-                                  budgetProgress >= 75 ? "bg-emerald-500" :
-                                    budgetProgress >= 50 ? "bg-blue-500" :
-                                      budgetProgress >= 25 ? "bg-amber-500" : "bg-rose-500"
-                                )}
-                              />
-                              <div className="flex items-center justify-between text-[10px] text-slate-400">
-                                <span>₣{program.fundsUtilized?.toLocaleString() || 0}</span>
-                                <span>₣{program.budget.toLocaleString()}</span>
-                              </div>
-                            </div>
-
-                            {/* Action Buttons */}
-                            <div className="flex items-center gap-2">
-                              <Button
-                                className="flex-1 h-8 bg-teal-600 hover:bg-teal-700 text-white text-xs font-medium rounded-lg"
-                                onClick={() => navigate(`/admin/programs/${program.id}`)}
-                              >
-                                <Eye className="w-3.5 h-3.5 mr-1.5" />
-                                View Details
-                              </Button>
-
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="outline" size="icon" className="h-8 w-8 border-slate-200">
-                                    <MoreVertical className="w-3.5 h-3.5" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="w-40">
-                                  <DropdownMenuItem onClick={() => { setSelectedProgram(program); setEditDialogOpen(true); }}>
-                                    <Edit className="w-4 h-4 mr-2" />
-                                    Edit
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    className="text-red-600"
-                                    onClick={() => handleDelete(program.id)}
-                                  >
-                                    <Trash2 className="w-4 h-4 mr-2" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
-                          </CardContent>
-                        </Card>
+                          </div>
+                        </div>
                       </motion.div>
                     );
                   })}
@@ -1191,6 +1417,7 @@ export function ProgramsPage() {
               </div>
             )}
           </motion.div>
+
         </div>
 
         {/* Create Dialog */}
@@ -1198,36 +1425,69 @@ export function ProgramsPage() {
           if (!open) resetForm();
           setCreateDialogOpen(open);
         }}>
-          <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-bold">Create New Program</DialogTitle>
-              <DialogDescription>
-                Fill in the details below to create a new impact program.
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleCreate}>
-              <ProgramForm
-                formData={formData}
-                setFormData={setFormData}
-                sdgInput={sdgInput}
-                setSdgInput={setSdgInput}
-                coverFile={coverFile}
-                setCoverFile={setCoverFile}
-                coverPreview={coverPreview}
-                setCoverPreview={setCoverPreview}
-                logoFile={logoFile}
-                setLogoFile={setLogoFile}
-                logoPreview={logoPreview}
-                setLogoPreview={setLogoPreview}
-                isSubmitting={isSubmitting}
-                onSubmit={handleCreate}
-                submitLabel="Create Program"
-                onCancel={() => {
-                  resetForm();
-                  setCreateDialogOpen(false);
-                }}
-              />
-            </form>
+          <DialogContent className="sm:max-w-[800px] w-[95%] md:w-full p-0">
+            {/* Main container with max height */}
+            <div className="flex flex-col" style={{ maxHeight: '90vh' }}>
+              {/* Fixed Header */}
+              <div className="px-6 py-4 border-b">
+                <DialogHeader>
+                  <DialogTitle className="text-xl font-bold">Create New Program</DialogTitle>
+                  <DialogDescription>
+                    Fill in the details below to create a new impact program.
+                  </DialogDescription>
+                </DialogHeader>
+              </div>
+
+              {/* Scrollable Content - THIS IS THE KEY PART */}
+              <div className="overflow-y-auto flex-1 px-6 py-4" style={{ maxHeight: 'calc(90vh - 130px)' }}>
+                <form onSubmit={handleCreate} id="create-program-form">
+                  <ProgramForm
+                    formData={formData}
+                    setFormData={setFormData}
+                    sdgInput={sdgInput}
+                    setSdgInput={setSdgInput}
+                    coverFile={coverFile}
+                    setCoverFile={setCoverFile}
+                    coverPreview={coverPreview}
+                    setCoverPreview={setCoverPreview}
+                    logoFile={logoFile}
+                    setLogoFile={setLogoFile}
+                    logoPreview={logoPreview}
+                    setLogoPreview={setLogoPreview}
+                    isSubmitting={isSubmitting}
+                    onSubmit={handleCreate}
+                    submitLabel="Create Program"
+                    onCancel={() => {
+                      resetForm();
+                      setCreateDialogOpen(false);
+                    }}
+                  />
+                </form>
+              </div>
+
+              {/* Fixed Footer */}
+              <div className="px-6 py-4 border-t flex justify-end gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    resetForm();
+                    setCreateDialogOpen(false);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  form="create-program-form"
+                  disabled={isSubmitting}
+                  className="bg-teal-600 hover:bg-teal-700 text-white"
+                >
+                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Create Program
+                </Button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
 
@@ -1236,36 +1496,69 @@ export function ProgramsPage() {
           if (!open) resetForm();
           setEditDialogOpen(open);
         }}>
-          <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-bold">Edit Program</DialogTitle>
-              <DialogDescription>
-                Update the program details below.
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleUpdate}>
-              <ProgramForm
-                formData={formData}
-                setFormData={setFormData}
-                sdgInput={sdgInput}
-                setSdgInput={setSdgInput}
-                coverFile={coverFile}
-                setCoverFile={setCoverFile}
-                coverPreview={coverPreview}
-                setCoverPreview={setCoverPreview}
-                logoFile={logoFile}
-                setLogoFile={setLogoFile}
-                logoPreview={logoPreview}
-                setLogoPreview={setLogoPreview}
-                isSubmitting={isSubmitting}
-                onSubmit={handleUpdate}
-                submitLabel="Save Changes"
-                onCancel={() => {
-                  resetForm();
-                  setEditDialogOpen(false);
-                }}
-              />
-            </form>
+          <DialogContent className="sm:max-w-[800px] w-[95%] md:w-full p-0">
+            {/* Main container with max height */}
+            <div className="flex flex-col" style={{ maxHeight: '90vh' }}>
+              {/* Fixed Header */}
+              <div className="px-6 py-4 border-b">
+                <DialogHeader>
+                  <DialogTitle className="text-xl font-bold">Edit Program</DialogTitle>
+                  <DialogDescription>
+                    Update the program details below.
+                  </DialogDescription>
+                </DialogHeader>
+              </div>
+
+              {/* Scrollable Content - THIS IS THE KEY PART */}
+              <div className="overflow-y-auto flex-1 px-6 py-4" style={{ maxHeight: 'calc(90vh - 130px)' }}>
+                <form onSubmit={handleUpdate} id="edit-program-form">
+                  <ProgramForm
+                    formData={formData}
+                    setFormData={setFormData}
+                    sdgInput={sdgInput}
+                    setSdgInput={setSdgInput}
+                    coverFile={coverFile}
+                    setCoverFile={setCoverFile}
+                    coverPreview={coverPreview}
+                    setCoverPreview={setCoverPreview}
+                    logoFile={logoFile}
+                    setLogoFile={setLogoFile}
+                    logoPreview={logoPreview}
+                    setLogoPreview={setLogoPreview}
+                    isSubmitting={isSubmitting}
+                    onSubmit={handleUpdate}
+                    submitLabel="Save Changes"
+                    onCancel={() => {
+                      resetForm();
+                      setEditDialogOpen(false);
+                    }}
+                  />
+                </form>
+              </div>
+
+              {/* Fixed Footer */}
+              <div className="px-6 py-4 border-t flex justify-end gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    resetForm();
+                    setEditDialogOpen(false);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  form="edit-program-form"
+                  disabled={isSubmitting}
+                  className="bg-teal-600 hover:bg-teal-700 text-white"
+                >
+                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Save Changes
+                </Button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
 

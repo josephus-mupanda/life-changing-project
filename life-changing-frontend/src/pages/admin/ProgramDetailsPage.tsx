@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { programsService } from '@/services/programs.service';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { PageSkeleton } from '@/components/Skeletons';
-import { Program, Project, CreateProjectDto, ProgramCategory, ProgramStatus, LocationDto, BeneficiaryStatus } from '@/lib/types';
+import { Program, Project, CreateProjectDto, ProgramCategory, ProgramStatus, LocationDto, BeneficiaryStatus, Beneficiary, Story, Donation } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,7 +12,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -50,7 +49,14 @@ import {
     Share2,
     Sparkles,
     Briefcase,
-    Eye
+    Eye,
+    Activity,
+    BarChart3,
+    PieChart,
+    BookMarked,
+    Quote,
+    Donut,
+    CreditCard
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -146,7 +152,6 @@ export function ProgramDetailsPage() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const [program, setProgram] = useState<Program | null>(null);
-    const [projects, setProjects] = useState<Project[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('overview');
 
@@ -171,21 +176,15 @@ export function ProgramDetailsPage() {
 
     useEffect(() => {
         if (id) {
-            fetchData();
+            fetchProgram();
         }
     }, [id]);
 
-    const fetchData = async () => {
+    const fetchProgram = async () => {
         setLoading(true);
         try {
-            const [programData, projectsData] = await Promise.all([
-                programsService.getProgram(id!),
-                programsService.getProjects(1, 100, id)
-            ]);
-
-            // Handle API response structure
+            const programData = await programsService.getProgram(id!);
             setProgram(programData);
-            setProjects(Array.isArray(projectsData) ? projectsData : projectsData?.data || []);
         } catch (error) {
             console.error(error);
             toast.error("Failed to load program details");
@@ -213,6 +212,8 @@ export function ProgramDetailsPage() {
 
     const openEditDialog = (project: Project) => {
         setEditingProject(project);
+        
+        // Map project location structure to form location structure
         const mappedLocation: LocationDto = {
             district: project.location?.districts?.[0] || '',
             sector: project.location?.sectors?.[0] || '',
@@ -236,7 +237,7 @@ export function ProgramDetailsPage() {
             },
             timeline,
             budgetRequired: Number(project.budgetRequired) || 0,
-            programId: project.program?.id || id || '',
+            programId: id || '',
             location: mappedLocation
         });
 
@@ -265,7 +266,7 @@ export function ProgramDetailsPage() {
             toast.success("Project created successfully");
             setIsDialogOpen(false);
             resetForm();
-            fetchData();
+            fetchProgram(); // Refresh program data to get updated projects
         } catch (error) {
             toast.error("Failed to create project");
         } finally {
@@ -288,7 +289,7 @@ export function ProgramDetailsPage() {
             toast.success("Project updated successfully");
             setIsDialogOpen(false);
             resetForm();
-            fetchData();
+            fetchProgram(); // Refresh program data to get updated projects
         } catch (error) {
             toast.error("Failed to update project");
         } finally {
@@ -301,7 +302,7 @@ export function ProgramDetailsPage() {
         try {
             await programsService.deleteProject(id!, projectId);
             toast.success("Project deleted");
-            fetchData();
+            fetchProgram(); // Refresh program data to get updated projects
         } catch (error) {
             toast.error("Failed to delete project");
         }
@@ -339,9 +340,26 @@ export function ProgramDetailsPage() {
     const statusConfig = getStatusConfig(program.status);
     const StatusIcon = statusConfig.icon;
     const categoryConfig = getCategoryConfig(program.category);
-    const budgetProgress = program.budget > 0
-        ? Math.min(((program.fundsUtilized || 0) / program.budget) * 100, 100)
+    const budgetProgress = Number(program.budget) > 0
+        ? Math.min(((Number(program.fundsUtilized) || 0) / Number(program.budget)) * 100, 100)
         : 0;
+
+    // Get data from program object
+    const projects = program.projects || [];
+    const beneficiaries = program.beneficiaries || [];
+    const stories = program.stories || [];
+    const donations = program.donations || [];
+
+    // Calculate stats
+    const totalBeneficiaries = beneficiaries.length;
+    const activeBeneficiaries = beneficiaries.filter(b => b.status === BeneficiaryStatus.ACTIVE).length;
+    const totalProjects = projects.length;
+    const activeProjects = projects.filter(p => p.isActive).length;
+    const totalStories = stories.length;
+    const totalDonations = donations.length;
+    const completedDonations = donations.filter(d => d.paymentStatus === 'completed').length;
+    const totalBudget = Number(program.budget) || 0;
+    const utilizedBudget = Number(program.fundsUtilized) || 0;
 
     return (
         <TooltipProvider>
@@ -396,7 +414,7 @@ export function ProgramDetailsPage() {
                                             </Avatar>
                                         )}
                                         <div>
-                                            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold">
+                                            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white">
                                                 {program.name.en}
                                             </h1>
                                             <p className="text-sm sm:text-base text-white/80 mt-1">
@@ -421,10 +439,12 @@ export function ProgramDetailsPage() {
                                             <StatusIcon className="w-3 h-3 mr-1 inline-block" />
                                             {statusConfig.label}
                                         </Badge>
-                                        <Badge variant="outline" className="bg-white/10 text-white border-white/20">
-                                            <Globe className="w-3 h-3 mr-1" />
-                                            SDG: {program.sdgAlignment?.join(', ') || 'N/A'}
-                                        </Badge>
+                                        {program.sdgAlignment && program.sdgAlignment.length > 0 && (
+                                            <Badge variant="outline" className="bg-white/10 text-white border-white/20">
+                                                <Globe className="w-3 h-3 mr-1" />
+                                                SDG: {program.sdgAlignment.join(', ')}
+                                            </Badge>
+                                        )}
                                     </div>
                                 </div>
 
@@ -449,17 +469,127 @@ export function ProgramDetailsPage() {
                         </div>
                     </motion.div>
 
-                    {/* Stats Grid - Same as before */}
+                    {/* Stats Grid */}
                     <motion.div variants={fadeInUp} className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                        {/* ... stats cards (keep as is) ... */}
+                        <Card className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:shadow-lg transition-all duration-300">
+                            <CardContent className="p-4 sm:p-5">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">
+                                            Beneficiaries
+                                        </p>
+                                        <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-blue-600">
+                                            {totalBeneficiaries}
+                                        </p>
+                                        <p className="text-[10px] text-emerald-600 mt-1 flex items-center gap-0.5">
+                                            <Activity className="w-3 h-3" />
+                                            {activeBeneficiaries} active
+                                        </p>
+                                    </div>
+                                    <div className="p-2 sm:p-3 rounded-xl bg-blue-100 dark:bg-blue-900/30">
+                                        <Users className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 dark:text-blue-400" />
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:shadow-lg transition-all duration-300">
+                            <CardContent className="p-4 sm:p-5">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">
+                                            Projects
+                                        </p>
+                                        <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-purple-600">
+                                            {totalProjects}
+                                        </p>
+                                        <p className="text-[10px] text-emerald-600 mt-1 flex items-center gap-0.5">
+                                            <Activity className="w-3 h-3" />
+                                            {activeProjects} active
+                                        </p>
+                                    </div>
+                                    <div className="p-2 sm:p-3 rounded-xl bg-purple-100 dark:bg-purple-900/30">
+                                        <FolderKanban className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600 dark:text-purple-400" />
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:shadow-lg transition-all duration-300">
+                            <CardContent className="p-4 sm:p-5">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">
+                                            Stories
+                                        </p>
+                                        <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-amber-600">
+                                            {totalStories}
+                                        </p>
+                                        <p className="text-[10px] text-amber-600 mt-1 flex items-center gap-0.5">
+                                            <BookMarked className="w-3 h-3" />
+                                            Impact stories
+                                        </p>
+                                    </div>
+                                    <div className="p-2 sm:p-3 rounded-xl bg-amber-100 dark:bg-amber-900/30">
+                                        <BookOpen className="w-4 h-4 sm:w-5 sm:h-5 text-amber-600 dark:text-amber-400" />
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:shadow-lg transition-all duration-300">
+                            <CardContent className="p-4 sm:p-5">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400 mb-1">
+                                            Donations
+                                        </p>
+                                        <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-emerald-600">
+                                            {totalDonations}
+                                        </p>
+                                        <p className="text-[10px] text-emerald-600 mt-1 flex items-center gap-0.5">
+                                            <CreditCard className="w-3 h-3" />
+                                            {completedDonations} completed
+                                        </p>
+                                    </div>
+                                    <div className="p-2 sm:p-3 rounded-xl bg-emerald-100 dark:bg-emerald-900/30">
+                                        <Heart className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-600 dark:text-emerald-400" />
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
                     </motion.div>
 
-                    {/* Budget Progress - Same as before */}
-                    <motion.div variants={fadeInUp}>
-                        {/* ... budget progress card (keep as is) ... */}
-                    </motion.div>
+                    {/* Budget Progress */}
+                    {Number(program.budget) > 0 && (
+                        <motion.div variants={fadeInUp}>
+                            <Card className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                                <CardContent className="p-4 sm:p-5">
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-1 h-4 bg-teal-500 rounded-full"></div>
+                                                <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
+                                                    Budget Utilization
+                                                </h3>
+                                            </div>
+                                            <span className="text-sm font-medium text-teal-600">
+                                                {Math.round(budgetProgress)}%
+                                            </span>
+                                        </div>
+                                        <Progress value={budgetProgress} className="h-2" />
+                                        <div className="flex items-center justify-between text-xs text-slate-500">
+                                            <span>Total: {formatCurrency(totalBudget)}</span>
+                                            <span>Utilized: {formatCurrency(utilizedBudget)}</span>
+                                            <span>Remaining: {formatCurrency(totalBudget - utilizedBudget)}</span>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </motion.div>
+                    )}
 
-                    {/* Tabs - Same as before */}
+                    {/* Tabs */}
                     <motion.div variants={fadeInUp}>
                         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
                             <TabsList className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 p-1">
@@ -468,16 +598,130 @@ export function ProgramDetailsPage() {
                                     Projects ({projects.length})
                                 </TabsTrigger>
                                 <TabsTrigger value="beneficiaries" className="text-xs sm:text-sm">
-                                    Beneficiaries ({program.beneficiaries?.length || 0})
+                                    Beneficiaries ({beneficiaries.length})
                                 </TabsTrigger>
                                 <TabsTrigger value="stories" className="text-xs sm:text-sm">
-                                    Stories ({program.stories?.length || 0})
+                                    Stories ({stories.length})
+                                </TabsTrigger>
+                                <TabsTrigger value="donations" className="text-xs sm:text-sm">
+                                    Donations ({donations.length})
                                 </TabsTrigger>
                             </TabsList>
 
-                            {/* Overview Tab - Same as before */}
+                            {/* Overview Tab */}
                             <TabsContent value="overview" className="mt-6">
-                                {/* ... overview content (keep as is) ... */}
+                                <div className="grid gap-6 md:grid-cols-2">
+                                    {/* Program Description */}
+                                    <Card className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                                        <CardHeader>
+                                            <CardTitle className="text-base font-bold flex items-center gap-2">
+                                                <div className="w-1 h-4 bg-teal-500 rounded-full"></div>
+                                                Program Description
+                                            </CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="space-y-4">
+                                            <div>
+                                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">English</h4>
+                                                <div 
+                                                    className="text-sm text-slate-600 dark:text-slate-400 prose prose-sm max-w-none"
+                                                    dangerouslySetInnerHTML={{ __html: program.description?.en || 'No description available.' }}
+                                                />
+                                            </div>
+                                            <div>
+                                                <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Kinyarwanda</h4>
+                                                <div 
+                                                    className="text-sm text-slate-600 dark:text-slate-400 prose prose-sm max-w-none"
+                                                    dangerouslySetInnerHTML={{ __html: program.description?.rw || 'Nta description iboneka.' }}
+                                                />
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+
+                                    {/* Key Details */}
+                                    <Card className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                                        <CardHeader>
+                                            <CardTitle className="text-base font-bold flex items-center gap-2">
+                                                <div className="w-1 h-4 bg-teal-500 rounded-full"></div>
+                                                Key Details
+                                            </CardTitle>
+                                        </CardHeader>
+                                        <CardContent className="space-y-4">
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div>
+                                                    <p className="text-xs text-slate-500 mb-1">Category</p>
+                                                    <Badge className={cn(
+                                                        "px-2 py-1 text-xs font-medium",
+                                                        categoryConfig.bg,
+                                                        categoryConfig.text
+                                                    )}>
+                                                        <span className="mr-1">{categoryConfig.icon}</span>
+                                                        {categoryConfig.label}
+                                                    </Badge>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-slate-500 mb-1">Status</p>
+                                                    <Badge className={cn(
+                                                        "px-2 py-1 text-xs font-medium",
+                                                        statusConfig.bg,
+                                                        statusConfig.text
+                                                    )}>
+                                                        <StatusIcon className="w-3 h-3 mr-1 inline-block" />
+                                                        {statusConfig.label}
+                                                    </Badge>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-slate-500 mb-1">Start Date</p>
+                                                    <p className="text-sm font-medium">
+                                                        {program.startDate ? formatDate(program.startDate) : 'N/A'}
+                                                    </p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-slate-500 mb-1">End Date</p>
+                                                    <p className="text-sm font-medium">
+                                                        {program.endDate ? formatDate(program.endDate) : 'N/A'}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            {program.sdgAlignment && program.sdgAlignment.length > 0 && (
+                                                <div>
+                                                    <p className="text-xs text-slate-500 mb-2">SDG Alignment</p>
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {program.sdgAlignment.map((sdg) => (
+                                                            <Badge key={sdg} variant="outline" className="text-xs">
+                                                                SDG {sdg}
+                                                            </Badge>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </CardContent>
+                                    </Card>
+
+                                    {/* KPIs */}
+                                    {program.kpiTargets && Object.keys(program.kpiTargets).length > 0 && (
+                                        <Card className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 md:col-span-2">
+                                            <CardHeader>
+                                                <CardTitle className="text-base font-bold flex items-center gap-2">
+                                                    <div className="w-1 h-4 bg-teal-500 rounded-full"></div>
+                                                    Key Performance Indicators
+                                                </CardTitle>
+                                            </CardHeader>
+                                            <CardContent>
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                    {Object.entries(program.kpiTargets).map(([key, value]) => (
+                                                        <div key={key} className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                                                            <p className="text-xs text-slate-500 mb-1 capitalize">
+                                                                {key.replace(/([A-Z])/g, ' $1').trim()}
+                                                            </p>
+                                                            <p className="text-sm font-semibold">{String(value)}</p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </CardContent>
+                                        </Card>
+                                    )}
+                                </div>
                             </TabsContent>
 
                             {/* Projects Tab */}
@@ -510,8 +754,8 @@ export function ProgramDetailsPage() {
                                     ) : (
                                         <AnimatePresence mode="popLayout">
                                             {projects.map((project) => {
-                                                const projectProgress = project.budgetRequired > 0
-                                                    ? Math.min(((project.budgetReceived || 0) / project.budgetRequired) * 100, 100)
+                                                const projectProgress = Number(project.budgetRequired) > 0
+                                                    ? Math.min(((Number(project.budgetReceived) || 0) / Number(project.budgetRequired)) * 100, 100)
                                                     : 0;
 
                                                 return (
@@ -571,7 +815,7 @@ export function ProgramDetailsPage() {
                                                                     </DropdownMenu>
                                                                 </div>
                                                                 <CardDescription className="text-xs line-clamp-2">
-                                                                    {project.description.en}
+                                                                    {project.description?.en}
                                                                 </CardDescription>
                                                             </CardHeader>
 
@@ -604,6 +848,16 @@ export function ProgramDetailsPage() {
                                                                         </div>
                                                                         <Progress value={projectProgress} className="h-1" />
                                                                     </div>
+
+                                                                    {/* Beneficiaries Target */}
+                                                                    {project.impactMetrics && (
+                                                                        <div className="flex items-center justify-between text-xs">
+                                                                            <span className="text-slate-500">Beneficiaries</span>
+                                                                            <span className="font-medium">
+                                                                                {project.impactMetrics.beneficiariesReached || 0} / {project.impactMetrics.beneficiariesTarget || 0}
+                                                                            </span>
+                                                                        </div>
+                                                                    )}
 
                                                                     {/* Gallery Preview */}
                                                                     {project.gallery && project.gallery.length > 0 && (
@@ -638,253 +892,468 @@ export function ProgramDetailsPage() {
                                 </div>
                             </TabsContent>
 
-                            {/* Beneficiaries Tab - Same as before */}
+                            {/* Beneficiaries Tab */}
                             <TabsContent value="beneficiaries" className="mt-6">
-                                {/* ... beneficiaries content (keep as is) ... */}
+                                <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                                    {beneficiaries.length === 0 ? (
+                                        <div className="col-span-full text-center py-16 bg-white/50 dark:bg-slate-900/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
+                                            <div className="flex flex-col items-center justify-center gap-4">
+                                                <div className="relative">
+                                                    <div className="absolute inset-0 bg-gradient-to-r from-teal-500/20 to-blue-500/20 rounded-full blur-3xl" />
+                                                    <Users className="w-16 h-16 text-slate-300 dark:text-slate-600 relative" />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <p className="text-xl font-bold text-slate-400 dark:text-slate-600">
+                                                        No beneficiaries yet
+                                                    </p>
+                                                    <p className="text-sm text-slate-400">
+                                                        Beneficiaries will appear here once enrolled
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        beneficiaries.map((beneficiary) => (
+                                            <Card key={beneficiary.id} className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:shadow-lg transition-all duration-300">
+                                                <CardContent className="p-4">
+                                                    <div className="flex items-start gap-3">
+                                                        <Avatar className="h-10 w-10">
+                                                            <AvatarImage src={beneficiary.user?.profileImageUrl} />
+                                                            <AvatarFallback className="bg-teal-100 text-teal-800 text-xs">
+                                                                {beneficiary.user?.fullName?.charAt(0) || 'B'}
+                                                            </AvatarFallback>
+                                                        </Avatar>
+                                                        <div className="flex-1 min-w-0">
+                                                            <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                                                                {beneficiary.user?.fullName || 'Unknown'}
+                                                            </p>
+                                                            <p className="text-xs text-slate-500">
+                                                                {beneficiary.user?.phone || 'No phone'}
+                                                            </p>
+                                                            <div className="flex items-center gap-2 mt-2">
+                                                                <Badge variant="outline" className="text-[10px]">
+                                                                    {beneficiary.status}
+                                                                </Badge>
+                                                                {beneficiary.businessType && (
+                                                                    <Badge variant="outline" className="text-[10px]">
+                                                                        {beneficiary.businessType}
+                                                                    </Badge>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex items-center gap-2 mt-1 text-[10px] text-slate-400">
+                                                                <MapPin className="w-3 h-3" />
+                                                                <span>
+                                                                    {beneficiary.location?.district}
+                                                                    {beneficiary.location?.sector && `, ${beneficiary.location.sector}`}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        ))
+                                    )}
+                                </div>
                             </TabsContent>
 
-                            {/* Stories Tab - Same as before */}
+                            {/* Stories Tab */}
                             <TabsContent value="stories" className="mt-6">
-                                {/* ... stories content (keep as is) ... */}
+                                <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                                    {stories.length === 0 ? (
+                                        <div className="col-span-full text-center py-16 bg-white/50 dark:bg-slate-900/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
+                                            <div className="flex flex-col items-center justify-center gap-4">
+                                                <div className="relative">
+                                                    <div className="absolute inset-0 bg-gradient-to-r from-teal-500/20 to-blue-500/20 rounded-full blur-3xl" />
+                                                    <BookOpen className="w-16 h-16 text-slate-300 dark:text-slate-600 relative" />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <p className="text-xl font-bold text-slate-400 dark:text-slate-600">
+                                                        No stories yet
+                                                    </p>
+                                                    <p className="text-sm text-slate-400">
+                                                        Impact stories will appear here once created
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        stories.map((story) => (
+                                            <Card key={story.id} className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:shadow-lg transition-all duration-300 overflow-hidden">
+                                                {story.media && story.media.length > 0 && (
+                                                    <div className="h-32 overflow-hidden">
+                                                        <img
+                                                            src={story.media[0].url}
+                                                            alt={story.title.en}
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                    </div>
+                                                )}
+                                                <CardContent className="p-4">
+                                                    <div className="space-y-2">
+                                                        <h3 className="text-sm font-semibold line-clamp-1">{story.title.en}</h3>
+                                                        <div 
+                                                            className="text-xs text-slate-500 line-clamp-2"
+                                                            dangerouslySetInnerHTML={{ __html: story.content.en }}
+                                                        />
+                                                        <div className="flex items-center justify-between mt-2">
+                                                            <span className="text-[10px] text-slate-400">
+                                                                By {story.authorName}
+                                                            </span>
+                                                            <Badge variant="outline" className="text-[10px]">
+                                                                {story.isPublished ? 'Published' : 'Draft'}
+                                                            </Badge>
+                                                        </div>
+                                                        {story.publishedDate && (
+                                                            <div className="flex items-center gap-1 text-[9px] text-slate-400">
+                                                                <Calendar className="w-2 h-2" />
+                                                                {formatDate(story.publishedDate)}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </CardContent>
+                                            </Card>
+                                        ))
+                                    )}
+                                </div>
+                            </TabsContent>
+
+                            {/* Donations Tab */}
+                            <TabsContent value="donations" className="mt-6">
+                                <div className="grid gap-6 grid-cols-1">
+                                    {donations.length === 0 ? (
+                                        <div className="text-center py-16 bg-white/50 dark:bg-slate-900/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
+                                            <div className="flex flex-col items-center justify-center gap-4">
+                                                <div className="relative">
+                                                    <div className="absolute inset-0 bg-gradient-to-r from-teal-500/20 to-blue-500/20 rounded-full blur-3xl" />
+                                                    <Heart className="w-16 h-16 text-slate-300 dark:text-slate-600 relative" />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <p className="text-xl font-bold text-slate-400 dark:text-slate-600">
+                                                        No donations yet
+                                                    </p>
+                                                    <p className="text-sm text-slate-400">
+                                                        Donations will appear here once received
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <Card className="border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full">
+                                                    <thead className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+                                                        <tr>
+                                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Date</th>
+                                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Donor</th>
+                                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Amount</th>
+                                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Method</th>
+                                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
+                                                            <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Type</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                                        {donations.map((donation) => (
+                                                            <tr key={donation.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                                                                <td className="px-6 py-3 text-sm">
+                                                                    {formatDate(donation.createdAt)}
+                                                                </td>
+                                                                <td className="px-6 py-3">
+                                                                    <div>
+                                                                        <p className="text-sm font-medium">
+                                                                            {donation.isAnonymous ? 'Anonymous' : donation.donorMessage?.split(' ')[0] || 'Donor'}
+                                                                        </p>
+                                                                        {donation.donorMessage && (
+                                                                            <p className="text-xs text-slate-500 truncate max-w-[200px]">
+                                                                                "{donation.donorMessage}"
+                                                                            </p>
+                                                                        )}
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-6 py-3 text-sm font-medium">
+                                                                    {formatCurrency(donation.amount)}
+                                                                    <span className="text-xs text-slate-400 ml-1">{donation.currency}</span>
+                                                                </td>
+                                                                <td className="px-6 py-3 text-sm">
+                                                                    {donation.paymentMethod}
+                                                                </td>
+                                                                <td className="px-6 py-3">
+                                                                    <Badge variant={
+                                                                        donation.paymentStatus === 'completed' ? 'default' :
+                                                                        donation.paymentStatus === 'pending' ? 'secondary' : 'destructive'
+                                                                    } className="text-xs">
+                                                                        {donation.paymentStatus}
+                                                                    </Badge>
+                                                                </td>
+                                                                <td className="px-6 py-3 text-sm">
+                                                                    {donation.donationType}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </Card>
+                                    )}
+                                </div>
                             </TabsContent>
                         </Tabs>
                     </motion.div>
                 </div>
 
                 {/* Create/Edit Project Dialog */}
-                <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
-                    <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-                        <DialogHeader>
-                            <DialogTitle className="text-xl font-bold">
-                                {editingProject ? 'Edit Project' : 'Create New Project'}
-                            </DialogTitle>
-                            <DialogDescription>
-                                {editingProject ? 'Update project details' : 'Add a new project to this program'}
-                            </DialogDescription>
-                        </DialogHeader>
-                        <form onSubmit={editingProject ? handleUpdateProject : handleCreateProject} className="space-y-6 py-4">
-                            {/* Basic Info */}
-                            <div className="space-y-3">
-                                <div className="flex items-center gap-2">
-                                    <div className="w-1 h-5 bg-teal-500 rounded-full"></div>
-                                    <Label className="text-xs font-bold uppercase text-slate-400 tracking-wider">
-                                        Project Details
-                                    </Label>
-                                </div>
-                                
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="nameEn">Name (English) *</Label>
-                                        <Input
-                                            id="nameEn"
-                                            value={formData.name.en}
-                                            onChange={e => setFormData({ ...formData, name: { ...formData.name, en: e.target.value } })}
-                                            className="border-slate-200 focus:border-teal-500 focus:ring-teal-500/20"
-                                            required
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="nameRw">Name (Kinyarwanda) *</Label>
-                                        <Input
-                                            id="nameRw"
-                                            value={formData.name.rw}
-                                            onChange={e => setFormData({ ...formData, name: { ...formData.name, rw: e.target.value } })}
-                                            className="border-slate-200 focus:border-teal-500 focus:ring-teal-500/20"
-                                            required
-                                        />
-                                    </div>
-                                </div>
+                <Dialog open={isDialogOpen} onOpenChange={(open) => { 
+                    setIsDialogOpen(open); 
+                    if (!open) resetForm(); 
+                }}>
+                    <DialogContent className="sm:max-w-[800px] w-[95%] md:w-full p-0">
+                        {/* Main container with max height */}
+                        <div className="flex flex-col" style={{ maxHeight: '90vh' }}>
+                            {/* Fixed Header - Clean white style with border */}
+                            <div className="px-6 py-4 border-b">
+                                <DialogHeader>
+                                    <DialogTitle className="text-xl font-bold">
+                                        {editingProject ? 'Edit Project' : 'Create New Project'}
+                                    </DialogTitle>
+                                    <DialogDescription>
+                                        {editingProject ? 'Update project details' : 'Add a new project to this program'}
+                                    </DialogDescription>
+                                </DialogHeader>
                             </div>
 
-                            {/* Descriptions with Rich Text Editor */}
-                            <div className="space-y-4 pt-4 border-t border-slate-100">
-                                <div className="flex items-center gap-2">
-                                    <div className="w-1 h-5 bg-teal-500 rounded-full"></div>
-                                    <Label className="text-xs font-bold uppercase text-slate-400 tracking-wider">
-                                        Descriptions
-                                    </Label>
-                                </div>
-
-                                <div className="space-y-4">
-                                    <div>
-                                        <Label htmlFor="descEn" className="text-sm font-medium mb-2 block">
-                                            Description (English)
-                                        </Label>
-                                        <RichTextEditor
-                                            value={formData.description.en}
-                                            onChange={(value) => setFormData({ 
-                                                ...formData, 
-                                                description: { ...formData.description, en: value } 
-                                            })}
-                                            placeholder="Write a detailed project description in English..."
-                                            height={200}
-                                        />
+                            {/* Scrollable Content */}
+                            <div 
+                                className="overflow-y-auto flex-1 px-6 py-4" 
+                                style={{ maxHeight: 'calc(90vh - 130px)' }}
+                            >
+                                <form 
+                                    id="project-form"
+                                    onSubmit={editingProject ? handleUpdateProject : handleCreateProject} 
+                                    className="space-y-6"
+                                >
+                                    {/* Basic Info */}
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-1 h-5 bg-teal-500 rounded-full"></div>
+                                            <Label className="text-xs font-bold uppercase text-slate-400 tracking-wider">
+                                                Project Details
+                                            </Label>
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="nameEn">Name (English) *</Label>
+                                                <Input
+                                                    id="nameEn"
+                                                    value={formData.name.en}
+                                                    onChange={e => setFormData({ ...formData, name: { ...formData.name, en: e.target.value } })}
+                                                    className="border-slate-200 focus:border-teal-500 focus:ring-teal-500/20"
+                                                    required
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="nameRw">Name (Kinyarwanda) *</Label>
+                                                <Input
+                                                    id="nameRw"
+                                                    value={formData.name.rw}
+                                                    onChange={e => setFormData({ ...formData, name: { ...formData.name, rw: e.target.value } })}
+                                                    className="border-slate-200 focus:border-teal-500 focus:ring-teal-500/20"
+                                                    required
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
 
-                                    <div>
-                                        <Label htmlFor="descRw" className="text-sm font-medium mb-2 block">
-                                            Description (Kinyarwanda) *
-                                        </Label>
-                                        <RichTextEditor
-                                            value={formData.description.rw}
-                                            onChange={(value) => setFormData({ 
-                                                ...formData, 
-                                                description: { ...formData.description, rw: value } 
-                                            })}
-                                            placeholder="Write a detailed project description in Kinyarwanda..."
-                                            height={200}
-                                            required
-                                        />
+                                    {/* Descriptions with Rich Text Editor */}
+                                    <div className="space-y-4 pt-4 border-t border-slate-100">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-1 h-5 bg-teal-500 rounded-full"></div>
+                                            <Label className="text-xs font-bold uppercase text-slate-400 tracking-wider">
+                                                Descriptions
+                                            </Label>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            <div>
+                                                <Label htmlFor="descEn" className="text-sm font-medium mb-2 block">
+                                                    Description (English)
+                                                </Label>
+                                                <RichTextEditor
+                                                    value={formData.description.en}
+                                                    onChange={(value) => setFormData({ 
+                                                        ...formData, 
+                                                        description: { ...formData.description, en: value } 
+                                                    })}
+                                                    placeholder="Write a detailed project description in English..."
+                                                    height={200}
+                                                />
+                                            </div>
+
+                                            <div>
+                                                <Label htmlFor="descRw" className="text-sm font-medium mb-2 block">
+                                                    Description (Kinyarwanda) *
+                                                </Label>
+                                                <RichTextEditor
+                                                    value={formData.description.rw}
+                                                    onChange={(value) => setFormData({ 
+                                                        ...formData, 
+                                                        description: { ...formData.description, rw: value } 
+                                                    })}
+                                                    placeholder="Write a detailed project description in Kinyarwanda..."
+                                                    height={200}
+                                                    required
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
+
+                                    {/* Timeline & Budget */}
+                                    <div className="space-y-3 pt-4 border-t border-slate-100">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-1 h-5 bg-teal-500 rounded-full"></div>
+                                            <Label className="text-xs font-bold uppercase text-slate-400 tracking-wider">
+                                                Timeline & Budget
+                                            </Label>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="startDate">Start Date</Label>
+                                                <Input
+                                                    id="startDate"
+                                                    type="date"
+                                                    value={formData.timeline.start ? formData.timeline.start.split('T')[0] : ''}
+                                                    onChange={e => setFormData({ 
+                                                        ...formData, 
+                                                        timeline: { ...formData.timeline, start: e.target.value } 
+                                                    })}
+                                                    className="border-slate-200"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="endDate">End Date</Label>
+                                                <Input
+                                                    id="endDate"
+                                                    type="date"
+                                                    value={formData.timeline.end ? formData.timeline.end.split('T')[0] : ''}
+                                                    onChange={e => setFormData({ 
+                                                        ...formData, 
+                                                        timeline: { ...formData.timeline, end: e.target.value } 
+                                                    })}
+                                                    className="border-slate-200"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="budget">Budget (USD)</Label>
+                                                <Input
+                                                    id="budget"
+                                                    type="number"
+                                                    value={formData.budgetRequired}
+                                                    onChange={e => setFormData({ ...formData, budgetRequired: Number(e.target.value) })}
+                                                    className="border-slate-200"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Location (Optional) */}
+                                    <div className="space-y-3 pt-4 border-t border-slate-100">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-1 h-5 bg-teal-500 rounded-full"></div>
+                                            <Label className="text-xs font-bold uppercase text-slate-400 tracking-wider">
+                                                Location
+                                                <span className="text-xs font-normal text-slate-400 ml-2">(Optional)</span>
+                                            </Label>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                            <Input
+                                                placeholder="District"
+                                                value={formData.location?.district}
+                                                onChange={e => setFormData({
+                                                    ...formData,
+                                                    location: { ...formData.location, district: e.target.value }
+                                                })}
+                                                className="border-slate-200"
+                                            />
+                                            <Input
+                                                placeholder="Sector"
+                                                value={formData.location?.sector}
+                                                onChange={e => setFormData({
+                                                    ...formData,
+                                                    location: { ...formData.location, sector: e.target.value }
+                                                })}
+                                                className="border-slate-200"
+                                            />
+                                            <Input
+                                                placeholder="Cell"
+                                                value={formData.location?.cell}
+                                                onChange={e => setFormData({
+                                                    ...formData,
+                                                    location: { ...formData.location, cell: e.target.value }
+                                                })}
+                                                className="border-slate-200"
+                                            />
+                                            <Input
+                                                placeholder="Village"
+                                                value={formData.location?.village}
+                                                onChange={e => setFormData({
+                                                    ...formData,
+                                                    location: { ...formData.location, village: e.target.value }
+                                                })}
+                                                className="border-slate-200"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* File Uploads */}
+                                    <div className="space-y-4 pt-4 border-t border-slate-100">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-1 h-5 bg-teal-500 rounded-full"></div>
+                                            <Label className="text-xs font-bold uppercase text-slate-400 tracking-wider">
+                                                Media
+                                            </Label>
+                                        </div>
+
+                                        <div className="space-y-6">
+                                            {/* Cover Image - Single file */}
+                                            <div>
+                                                <Label className="text-sm font-medium mb-2 block">
+                                                    Cover Image
+                                                </Label>
+                                                <DropZone
+                                                    onFileSelect={setCoverFile}
+                                                    selectedFile={coverFile}
+                                                    preview={coverPreview}
+                                                    onPreviewChange={setCoverPreview}
+                                                    label="Upload cover image"
+                                                    description="Main project image - recommended size: 1200x630px"
+                                                    maxSize={5 * 1024 * 1024} // 5MB
+                                                />
+                                            </div>
+
+                                            {/* Gallery - Multiple files */}
+                                            <div>
+                                                <Label className="text-sm font-medium mb-2 block">
+                                                    Gallery (Images & Videos)
+                                                </Label>
+                                                <MultiFileDropZone
+                                                    onFilesSelect={setGalleryFiles}
+                                                    selectedFiles={galleryFiles}
+                                                    existingPreviews={existingGallery}
+                                                    onRemoveExisting={handleRemoveExistingGallery}
+                                                    label="Upload gallery files"
+                                                    description="Add images or videos to showcase your project"
+                                                    maxSize={10 * 1024 * 1024} // 10MB
+                                                    maxFiles={10}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </form>
                             </div>
 
-                            {/* Timeline & Budget */}
-                            <div className="space-y-3 pt-4 border-t border-slate-100">
-                                <div className="flex items-center gap-2">
-                                    <div className="w-1 h-5 bg-teal-500 rounded-full"></div>
-                                    <Label className="text-xs font-bold uppercase text-slate-400 tracking-wider">
-                                        Timeline & Budget
-                                    </Label>
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="startDate">Start Date</Label>
-                                        <Input
-                                            id="startDate"
-                                            type="date"
-                                            value={formData.timeline.start ? formData.timeline.start.split('T')[0] : ''}
-                                            onChange={e => setFormData({ 
-                                                ...formData, 
-                                                timeline: { ...formData.timeline, start: e.target.value } 
-                                            })}
-                                            className="border-slate-200"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="endDate">End Date</Label>
-                                        <Input
-                                            id="endDate"
-                                            type="date"
-                                            value={formData.timeline.end ? formData.timeline.end.split('T')[0] : ''}
-                                            onChange={e => setFormData({ 
-                                                ...formData, 
-                                                timeline: { ...formData.timeline, end: e.target.value } 
-                                            })}
-                                            className="border-slate-200"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="budget">Budget (USD)</Label>
-                                        <Input
-                                            id="budget"
-                                            type="number"
-                                            value={formData.budgetRequired}
-                                            onChange={e => setFormData({ ...formData, budgetRequired: Number(e.target.value) })}
-                                            className="border-slate-200"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Location (Optional) */}
-                            <div className="space-y-3 pt-4 border-t border-slate-100">
-                                <div className="flex items-center gap-2">
-                                    <div className="w-1 h-5 bg-teal-500 rounded-full"></div>
-                                    <Label className="text-xs font-bold uppercase text-slate-400 tracking-wider">
-                                        Location
-                                        <span className="text-xs font-normal text-slate-400 ml-2">(Optional)</span>
-                                    </Label>
-                                </div>
-
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                                    <Input
-                                        placeholder="District"
-                                        value={formData.location?.district}
-                                        onChange={e => setFormData({
-                                            ...formData,
-                                            location: { ...formData.location, district: e.target.value }
-                                        })}
-                                        className="border-slate-200"
-                                    />
-                                    <Input
-                                        placeholder="Sector"
-                                        value={formData.location?.sector}
-                                        onChange={e => setFormData({
-                                            ...formData,
-                                            location: { ...formData.location, sector: e.target.value }
-                                        })}
-                                        className="border-slate-200"
-                                    />
-                                    <Input
-                                        placeholder="Cell"
-                                        value={formData.location?.cell}
-                                        onChange={e => setFormData({
-                                            ...formData,
-                                            location: { ...formData.location, cell: e.target.value }
-                                        })}
-                                        className="border-slate-200"
-                                    />
-                                    <Input
-                                        placeholder="Village"
-                                        value={formData.location?.village}
-                                        onChange={e => setFormData({
-                                            ...formData,
-                                            location: { ...formData.location, village: e.target.value }
-                                        })}
-                                        className="border-slate-200"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* File Uploads */}
-                            <div className="space-y-4 pt-4 border-t border-slate-100">
-                                <div className="flex items-center gap-2">
-                                    <div className="w-1 h-5 bg-teal-500 rounded-full"></div>
-                                    <Label className="text-xs font-bold uppercase text-slate-400 tracking-wider">
-                                        Media
-                                    </Label>
-                                </div>
-
-                                <div className="space-y-6">
-                                    {/* Cover Image - Single file */}
-                                    <div>
-                                        <Label className="text-sm font-medium mb-2 block">
-                                            Cover Image
-                                        </Label>
-                                        <DropZone
-                                            onFileSelect={setCoverFile}
-                                            selectedFile={coverFile}
-                                            preview={coverPreview}
-                                            onPreviewChange={setCoverPreview}
-                                            label="Upload cover image"
-                                            description="Main project image - recommended size: 1200x630px"
-                                            maxSize={5 * 1024 * 1024} // 5MB
-                                        />
-                                    </div>
-
-                                    {/* Gallery - Multiple files */}
-                                    <div>
-                                        <Label className="text-sm font-medium mb-2 block">
-                                            Gallery (Images & Videos)
-                                        </Label>
-                                        <MultiFileDropZone
-                                            onFilesSelect={setGalleryFiles}
-                                            selectedFiles={galleryFiles}
-                                            existingPreviews={existingGallery}
-                                            onRemoveExisting={handleRemoveExistingGallery}
-                                            label="Upload gallery files"
-                                            description="Add images or videos to showcase your project"
-                                            maxSize={10 * 1024 * 1024} // 10MB
-                                            maxFiles={10}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Form Actions */}
-                            <div className="flex justify-end gap-3 pt-6 border-t">
+                            {/* Fixed Footer */}
+                            <div className="px-6 py-4 border-t flex justify-end gap-3">
                                 <Button 
                                     type="button" 
                                     variant="outline" 
@@ -895,14 +1364,15 @@ export function ProgramDetailsPage() {
                                 </Button>
                                 <Button 
                                     type="submit" 
+                                    form="project-form"
                                     disabled={isSubmitting} 
-                                    className="bg-teal-600 hover:bg-teal-700 px-6"
+                                    className="bg-teal-600 hover:bg-teal-700 text-white px-6"
                                 >
                                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                     {editingProject ? 'Save Changes' : 'Create Project'}
                                 </Button>
                             </div>
-                        </form>
+                        </div>
                     </DialogContent>
                 </Dialog>
             </motion.div>

@@ -608,6 +608,100 @@ const translations: Record<Language, Record<string, string>> = {
         'getinvolved.vol_training': 'Business Training',
         'getinvolved.vol_education': 'Educational Support',
         'getinvolved.vol_outreach': 'Community Outreach',
+        // Programs related translations
+        'programs.no_programs': 'No programs available at the moment.',
+        'programs.key_stats': 'Key Stats:',
+        'programs.budget': 'Budget',
+        'programs.progress': 'Progress',
+        'programs.sdg': 'SDG',
+        'programs.view_details': 'View Details',
+        'programs.status': 'Status',
+        'programs.start_date': 'Start Date',
+        'programs.end_date': 'End Date',
+        'programs.overview': 'Overview',
+        'programs.projects': 'Projects',
+        'programs.beneficiaries': 'Beneficiaries',
+        'programs.stories': 'Stories',
+        'programs.donations': 'Donations',
+        'programs.about': 'About the Program',
+        'programs.sdg_alignment': 'SDG Alignment',
+        'programs.details': 'Program Details',
+        'programs.category': 'Category',
+        'programs.financial': 'Financial Overview',
+        'programs.allocated': 'Allocated',
+        'programs.utilized': 'Utilized',
+        'programs.timeline': 'Timeline',
+        'programs.location': 'Location',
+        'programs.no_projects': 'No projects available for this program.',
+        'programs.impact': 'Impact at a Glance',
+        'programs.donate': 'Donate to this Program',
+        'programs.become_partner': 'Become a Partner',
+        'programs.project_progress': 'Project Progress',
+        'programs.view_all_programs': 'View All Programs',
+
+        // Navigation
+        'nav.back': 'Back to Programs',
+        'nav.programs': 'Programs',
+        'nav.register': 'Register',
+
+        // Error messages
+        'error.general': 'Something went wrong. Please try again.',
+        'error.not_found': 'Page not found',
+        'error.unauthorized': 'You are not authorized to view this page',
+        'error.network': 'Network error. Please check your connection.',
+
+        // Success messages
+        'success.saved': 'Changes saved successfully',
+        'success.deleted': 'Item deleted successfully',
+        'success.updated': 'Updated successfully',
+        'success.created': 'Created successfully',
+
+        // Loading states
+        'loading.default': 'Loading...',
+        'loading.programs': 'Loading programs...',
+        'loading.projects': 'Loading projects...',
+        'loading.beneficiaries': 'Loading beneficiaries...',
+        'loading.donations': 'Loading donations...',
+
+        // Form labels
+        'form.name': 'Name',
+        'form.email': 'Email',
+        'form.phone': 'Phone',
+        'form.address': 'Address',
+        'form.description': 'Description',
+        'form.category': 'Category',
+        'form.status': 'Status',
+        'form.save': 'Save',
+        'form.cancel': 'Cancel',
+        'form.edit': 'Edit',
+        'form.delete': 'Delete',
+        'form.submit': 'Submit',
+        'form.required': 'Required',
+        'form.optional': 'Optional',
+
+        // Table headers
+        'table.actions': 'Actions',
+        'table.date': 'Date',
+        'table.amount': 'Amount',
+        'table.type': 'Type',
+        'table.status': 'Status',
+        'table.name': 'Name',
+        'table.email': 'Email',
+        'table.phone': 'Phone',
+
+        // Program details
+        'program.details.manager': 'Program Manager',
+        'program.details.contact': 'Contact Program Team',
+        'program.details.stay_connected': 'Stay Connected',
+        'program.details.share': 'Share this program',
+        'program.details.follow': 'Follow program updates',
+
+        // Donation related
+        'donation.support_now': 'Support Now',
+        'donation.one_time': 'One-time',
+        'donation.monthly': 'Monthly',
+        'donation.quarterly': 'Quarterly',
+        'donation.yearly': 'Yearly',
     },
     rw: {
         'nav.home': 'Ahabanza',
@@ -1208,6 +1302,101 @@ const translations: Record<Language, Record<string, string>> = {
         'getinvolved.vol_training': 'Amahugurwa mu bucuruzi',
         'getinvolved.vol_education': 'Ubufasha mu burezi',
         'getinvolved.vol_outreach': 'Gushakira ubufasha mu muryango',
+
+        // Programs related translations
+        'programs.no_programs': 'Nta gahunda zihari ubu.',
+        'programs.key_stats': 'Ibintu by\'ingenzi:',
+        'programs.budget': 'Ingengo y\'imari',
+        'programs.progress': 'Iterambere',
+        'programs.sdg': 'Intego',
+        'programs.view_details': 'Reba byinshi',
+        'programs.status': 'Imiterere',
+        'programs.start_date': 'Itariki y\'itangira',
+        'programs.end_date': 'Itariki y\'isoza',
+        'programs.overview': 'Incamake',
+        'programs.projects': 'Imishinga',
+        'programs.beneficiaries': 'Abagenerwabikorwa',
+        'programs.stories': 'Inkuru',
+        'programs.donations': 'Inkunga',
+        'programs.about': 'Ibijyanye na gahunda',
+        'programs.sdg_alignment': 'Guhuza n\'intego',
+        'programs.details': 'Ibisobanuro birambuye',
+        'programs.category': 'Icyiciro',
+        'programs.financial': 'Imari',
+        'programs.allocated': 'Ibyashyizwe ku ruhande',
+        'programs.utilized': 'Ibyakoreshejwe',
+        'programs.timeline': 'Igihe',
+        'programs.location': 'Aho biherereye',
+        'programs.no_projects': 'Nta mishanga iboneka muri iyi gahunda.',
+        'programs.impact': 'Ingaruka mu buryo bw\'imibare',
+        'programs.donate': 'Tanga inkunga kuri iyi gahunda',
+        'programs.become_partner': 'Ba umufatanyabikorwa',
+        'programs.project_progress': 'Iterambere ry\'umushinga',
+        'programs.view_all_programs': 'Reba gahunda zose',
+
+        // Navigation
+        'nav.back': 'Subira ku gahunda',
+        'nav.programs': 'Gahunda',
+        'nav.register': 'Iyandikishe',
+
+        // Error messages
+        'error.general': 'Hari ikintu kitagenze neza. Ongera ugerageze.',
+        'error.not_found': 'Ipapuro risabwa ntiriboneka',
+        'error.unauthorized': 'Ntabwo urekerewe kureba iyi paji',
+        'error.network': 'Ikosa ry\'umuyoboro. Ongera ugerageze.',
+
+        // Success messages
+        'success.saved': 'Amakuru yabitswe neza',
+        'success.deleted': 'Amakuru yasibwe neza',
+        'success.updated': 'Amakuru yavugurujwe neza',
+        'success.created': 'Byaremwe neza',
+
+        // Loading states
+        'loading.default': 'Biratunganywa...',
+        'loading.programs': 'Gahunda ziratunganywa...',
+        'loading.projects': 'Imishinga iratunganywa...',
+        'loading.beneficiaries': 'Abagenerwabikorwa baratunganywa...',
+        'loading.donations': 'Inkunga ziratunganywa...',
+
+        // Form labels
+        'form.name': 'Izina',
+        'form.email': 'Imeri',
+        'form.phone': 'Telefoni',
+        'form.address': 'Aho utuye',
+        'form.description': 'Ibisobanuro',
+        'form.category': 'Icyiciro',
+        'form.status': 'Imiterere',
+        'form.save': 'Bika',
+        'form.cancel': 'Kureka',
+        'form.edit': 'Hindura',
+        'form.delete': 'Siba',
+        'form.submit': 'Ohereza',
+        'form.required': 'Birakenewe',
+        'form.optional': 'Ntibisabwa',
+
+        // Table headers
+        'table.actions': 'Ibikorwa',
+        'table.date': 'Itariki',
+        'table.amount': 'Amafaranga',
+        'table.type': 'Ubwoko',
+        'table.status': 'Imiterere',
+        'table.name': 'Izina',
+        'table.email': 'Imeri',
+        'table.phone': 'Telefoni',
+
+        // Program details
+        'program.details.manager': 'Umuyobozi w\'igahunda',
+        'program.details.contact': 'Vugana n\'itsinda ry\'igahunda',
+        'program.details.stay_connected': 'Guma ufite isano',
+        'program.details.share': 'Sangiza iyi gahunda',
+        'program.details.follow': 'Kurikirana amakuru y\'igahunda',
+
+        // Donation related
+        'donation.support_now': 'Shyigikira ubu',
+        'donation.one_time': 'Inshuro imwe',
+        'donation.monthly': 'Buri kwezi',
+        'donation.quarterly': 'Buri gihembwe',
+        'donation.yearly': 'Buri mwaka',
     },
 };
 

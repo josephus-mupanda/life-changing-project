@@ -1,3 +1,4 @@
+// src/modules/donations/entities/donation.entity.ts
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -69,11 +70,19 @@ export class Donation {
   @Column({ name: 'payment_details', type: 'jsonb', nullable: true })
   paymentDetails: {
     provider: string;
+    // Stripe fields
+    paymentIntentId?: string;
+    clientSecret?: string;
+    cardLast4?: string;
+    cardBrand?: string;
+    // Paypack fields
+    transactionRef?: string;
+    phoneNumber?: string;
+    provider_type?: string;
+    // Common fields
     accountNumber?: string;
     mobileNumber?: string;
     network?: string;
-    cardLast4?: string;
-    cardBrand?: string;
   };
 
   @Column({ name: 'receipt_sent', default: false })
@@ -94,6 +103,8 @@ export class Donation {
     userAgent: string;
     paymentGatewayResponse: any;
     taxReceiptEligible: boolean;
+    recurringDonationId?: string;
+    error?: string;
   };
 
   @Column({ name: 'donor_message', type: 'text', nullable: true })

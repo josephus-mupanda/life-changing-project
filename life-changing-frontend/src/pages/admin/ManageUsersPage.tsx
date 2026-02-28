@@ -313,87 +313,97 @@ export function ManageUsersPage() {
                     <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">Manage Users</h1>
                     <p className="text-slate-500 text-sm font-medium">Control system access and user classifications</p>
                 </div>
+                {/* Add User Modal */}
                 <Dialog open={isAddModalOpen} onOpenChange={(open) => { setIsAddModalOpen(open); if (!open) resetForm(); }}>
                     <DialogTrigger asChild>
-                        <Button
-                            className="rounded-xl font-semibold bg-teal-600 hover:bg-teal-700 text-white shadow-md">
+                        <Button className="rounded-xl font-semibold bg-teal-600 hover:bg-teal-700 text-white shadow-md">
                             <Plus className="h-4 w-4 mr-2" />
                             Add User
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="!max-w-[280px] p-0 border-none shadow-[0_32px_64px_-16px_rgba(0,0,0,0.15)] rounded-2xl overflow-hidden bg-white dark:bg-slate-950">
-                        <div className="px-4 py-3 border-b border-slate-50 dark:border-slate-900 bg-slate-50/30">
-                            <div>
-                                <DialogTitle className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">New Entry</DialogTitle>
-                                <DialogDescription className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Registry Initialization</DialogDescription>
+                    <DialogContent className="sm:max-w-[400px] w-[95%] md:w-full p-0">
+                        <div className="flex flex-col" style={{ maxHeight: '90vh' }}>
+                            {/* Fixed Header */}
+                            <div className="px-6 py-4 border-b">
+                                <DialogHeader>
+                                    <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                                        <div className="p-2 rounded-lg bg-teal-100 text-teal-600">
+                                            <Plus className="w-4 h-4" />
+                                        </div>
+                                        Create New User
+                                    </DialogTitle>
+                                    <DialogDescription>
+                                        Add a new user to the system
+                                    </DialogDescription>
+                                </DialogHeader>
                             </div>
-                        </div>
-                        <form onSubmit={handleCreateUser} className="p-4 pt-3 space-y-3">
-                            <div className="space-y-1">
-                                <Label className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Identity Name</Label>
-                                <Input
-                                    value={formData.fullName}
-                                    onChange={(e) => handleInputChange('fullName', e.target.value)}
-                                    placeholder="Enter legal name"
-                                    className="h-8 rounded-lg border-slate-100 bg-slate-50/50 focus:ring-slate-900 transition-all font-bold text-xs"
-                                    required
-                                />
+
+                            {/* Scrollable Content */}
+                            <div className="overflow-y-auto flex-1 p-6">
+                                <form id="add-user-form" onSubmit={handleCreateUser} className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label className="text-sm font-medium">Full Name</Label>
+                                        <Input
+                                            value={formData.fullName}
+                                            onChange={(e) => handleInputChange('fullName', e.target.value)}
+                                            placeholder="Enter full name"
+                                            required
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-sm font-medium">Email</Label>
+                                        <Input
+                                            type="email"
+                                            value={formData.email}
+                                            onChange={(e) => handleInputChange('email', e.target.value)}
+                                            placeholder="email@example.com"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-sm font-medium">Phone</Label>
+                                        <Input
+                                            value={formData.phone}
+                                            onChange={(e) => handleInputChange('phone', e.target.value)}
+                                            placeholder="+250 788 123 456"
+                                            required
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-sm font-medium">Password</Label>
+                                        <Input
+                                            type="password"
+                                            value={formData.password}
+                                            onChange={(e) => handleInputChange('password', e.target.value)}
+                                            placeholder="Temporary password"
+                                            required
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-sm font-medium">User Type</Label>
+                                        <Select value={formData.userType} onValueChange={(val) => handleInputChange('userType', val)}>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Select user type" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value={UserType.ADMIN}>Admin</SelectItem>
+                                                <SelectItem value={UserType.DONOR}>Donor</SelectItem>
+                                                <SelectItem value={UserType.BENEFICIARY}>Beneficiary</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </form>
                             </div>
-                            <div className="space-y-1">
-                                <Label className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Password</Label>
-                                <Input
-                                    type="password"
-                                    value={formData.password}
-                                    onChange={(e) => handleInputChange('password', e.target.value)}
-                                    placeholder="Temp Password"
-                                    className="h-8 rounded-lg border-slate-100 bg-slate-50/50 focus:ring-slate-900 transition-all font-bold text-xs"
-                                    required
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="space-y-1">
-                                    <Label className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Phone Link</Label>
-                                    <Input
-                                        value={formData.phone}
-                                        onChange={(e) => handleInputChange('phone', e.target.value)}
-                                        placeholder="+000 000 000"
-                                        className="h-8 rounded-lg border-slate-100 bg-slate-50/50 font-bold text-xs"
-                                        required
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <Label className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Class</Label>
-                                    <Select value={formData.userType} onValueChange={(val) => handleInputChange('userType', val)}>
-                                        <SelectTrigger className="h-8 rounded-lg border-slate-100 bg-slate-50/50 font-black text-[10px] uppercase tracking-wider">
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent className="rounded-lg border-slate-100">
-                                            <SelectItem value={UserType.ADMIN} className="text-[10px] font-black uppercase tracking-wider">Admin</SelectItem>
-                                            <SelectItem value={UserType.DONOR} className="text-[10px] font-black uppercase tracking-wider">Donor</SelectItem>
-                                            <SelectItem value={UserType.BENEFICIARY} className="text-[10px] font-black uppercase tracking-wider">Beneficiary</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-                            <div className="space-y-1">
-                                <Label className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Email Endpoint</Label>
-                                <Input
-                                    type="email"
-                                    value={formData.email}
-                                    onChange={(e) => handleInputChange('email', e.target.value)}
-                                    placeholder="identity@lceo.org"
-                                    className="h-8 rounded-lg border-slate-100 bg-slate-50/50 font-bold text-xs"
-                                />
-                            </div>
-                            <div className="pt-2 flex flex-col items-center gap-1.5">
-                                <Button type="submit" className="w-3/4 h-8 rounded-lg font-semibold text-[10px] uppercase tracking-wider shadow-md transition-all duration-200 active:scale-[0.97]" style={{ backgroundColor: '#4c9789', color: '#ffffff' }}>
-                                    Create User
-                                </Button>
-                                <Button type="button" variant="ghost" className="w-3/4 h-7 text-[9px] font-semibold uppercase tracking-wider text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-all duration-200" onClick={() => setIsAddModalOpen(false)}>
+
+                            {/* Fixed Footer */}
+                            <div className="px-6 py-4 border-t flex justify-end gap-3">
+                                <Button type="button" variant="outline" onClick={() => setIsAddModalOpen(false)}>
                                     Cancel
                                 </Button>
+                                <Button type="submit" form="add-user-form" className="bg-teal-600 hover:bg-teal-700 text-white">
+                                    Create User
+                                </Button>
                             </div>
-                        </form>
+                        </div>
                     </DialogContent>
                 </Dialog>
             </div>
@@ -547,29 +557,36 @@ export function ManageUsersPage() {
                                                     >
                                                         <Edit size={12} />
                                                     </Button>
-                                                    <Button
-                                                        size="icon"
-                                                        variant="ghost"
-                                                        className={cn(
-                                                            "h-6 w-6 rounded-md transition-all duration-150 border border-transparent hover:scale-110",
-                                                            user.isActive
-                                                                ? "bg-amber-50/80 dark:bg-amber-900/20 hover:bg-amber-100 text-amber-500 hover:text-amber-700 hover:border-amber-200/60"
-                                                                : "bg-emerald-50/80 dark:bg-emerald-900/20 hover:bg-emerald-100 text-emerald-500 hover:text-emerald-700 hover:border-emerald-200/60"
-                                                        )}
-                                                        title={user.isActive ? "Suspend" : "Activate"}
-                                                        onClick={() => toggleUserStatus(user)}
-                                                    >
-                                                        <Power size={12} />
-                                                    </Button>
-                                                    <Button
-                                                        size="icon"
-                                                        variant="ghost"
-                                                        className="h-6 w-6 rounded-md bg-rose-50/80 dark:bg-rose-900/15 hover:bg-rose-100 text-rose-400 hover:text-rose-600 transition-all duration-150 hover:scale-110 border border-transparent hover:border-rose-200/60"
-                                                        title="Delete User"
-                                                        onClick={() => { setSelectedUser(user); setIsDeleteModalOpen(true); }}
-                                                    >
-                                                        <Trash2 size={12} />
-                                                    </Button>
+
+                                                    {user.userType !== UserType.ADMIN && (
+                                                        <Button
+                                                            size="icon"
+                                                            variant="ghost"
+                                                            className={cn(
+                                                                "h-6 w-6 rounded-md transition-all duration-150 border border-transparent hover:scale-110",
+                                                                user.isActive
+                                                                    ? "bg-amber-50/80 dark:bg-amber-900/20 hover:bg-amber-100 text-amber-500 hover:text-amber-700 hover:border-amber-200/60"
+                                                                    : "bg-emerald-50/80 dark:bg-emerald-900/20 hover:bg-emerald-100 text-emerald-500 hover:text-emerald-700 hover:border-emerald-200/60"
+                                                            )}
+                                                            title={user.isActive ? "Suspend" : "Activate"}
+                                                            onClick={() => toggleUserStatus(user)}
+                                                        >
+                                                            <Power size={12} />
+                                                        </Button>
+                                                    )}
+
+                                                    {user.userType !== UserType.ADMIN && (
+                                                        <Button
+                                                            size="icon"
+                                                            variant="ghost"
+                                                            className="h-6 w-6 rounded-md bg-rose-50/80 dark:bg-rose-900/15 hover:bg-rose-100 text-rose-400 hover:text-rose-600 transition-all duration-150 hover:scale-110 border border-transparent hover:border-rose-200/60"
+                                                            title="Delete User"
+                                                            onClick={() => { setSelectedUser(user); setIsDeleteModalOpen(true); }}
+                                                        >
+                                                            <Trash2 size={12} />
+                                                        </Button>
+                                                    )}
+
                                                 </div>
                                             </TableCell>
                                         </motion.tr>
@@ -604,45 +621,82 @@ export function ManageUsersPage() {
 
             {/* Modals - Keeping structure but ensuring they use state correctly */}
             {/* View Profile Modal - No Change needed other than ensuring data presence */}
+            {/* View Profile Modal */}
             <Dialog open={isViewModalOpen} onOpenChange={setIsViewModalOpen}>
-                <DialogContent className="!max-w-[280px] p-0 border-none shadow-[0_32px_64px_-16px_rgba(0,0,0,0.15)] rounded-2xl overflow-hidden bg-white dark:bg-slate-950">
-                    <div className="px-4 py-3 border-b border-slate-50 dark:border-slate-900 bg-slate-50/30">
-                        <div>
-                            <DialogTitle className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">User Profile</DialogTitle>
-                            <DialogDescription className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">View Details</DialogDescription>
-                        </div>
-                    </div>
-                    <div className="p-4 pt-3 space-y-3 overflow-y-auto max-h-[320px]">
-                        <div className="flex flex-col items-center gap-2 pb-1">
-                            <div className="relative">
-                                <Avatar className="w-14 h-14 ring-2 ring-slate-100 dark:ring-slate-800 shadow-md">
-                                    <AvatarImage src={selectedUser?.profileImageUrl} className="object-cover" />
-                                    <AvatarFallback className="text-base font-black bg-slate-100 text-slate-900">{selectedUser?.fullName[0]}</AvatarFallback>
-                                </Avatar>
-                                <div className={cn("absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white dark:border-slate-950", selectedUser?.isActive ? "bg-emerald-500" : "bg-slate-300")} />
-                            </div>
-                            <div className="text-center">
-                                <h2 className="text-sm font-black text-slate-900 dark:text-white tracking-tight">{selectedUser?.fullName}</h2>
-                                <p className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-400 mt-0.5">{selectedUser?.userType}</p>
-                            </div>
+                <DialogContent className="sm:max-w-[400px] w-[95%] md:w-full p-0">
+                    <div className="flex flex-col" style={{ maxHeight: '90vh' }}>
+                        {/* Fixed Header */}
+                        <div className="px-6 py-4 border-b">
+                            <DialogHeader>
+                                <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                                    <div className="p-2 rounded-lg bg-blue-100 text-blue-600">
+                                        <Eye className="w-4 h-4" />
+                                    </div>
+                                    User Profile
+                                </DialogTitle>
+                                <DialogDescription>
+                                    View user details
+                                </DialogDescription>
+                            </DialogHeader>
                         </div>
 
-                        <div className="space-y-2 text-left">
-                            {[
-                                { label: 'Email', value: selectedUser?.email || 'N/A', icon: Mail },
-                                { label: 'Phone', value: selectedUser?.phone, icon: Phone },
-                                { label: 'Joined', value: selectedUser ? formatDate(selectedUser.createdAt) : '--', icon: Calendar }
-                            ].map((item, i) => (
-                                <div key={i} className="p-2.5 bg-slate-50/50 dark:bg-slate-900/50 border border-slate-100/50 dark:border-slate-800/50 rounded-lg">
-                                    <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-0.5 flex items-center gap-1 leading-none">
-                                        <item.icon size={9} className="opacity-50" /> {item.label}
-                                    </p>
-                                    <p className="text-[10px] font-bold text-slate-700 dark:text-slate-300 truncate leading-none">{item.value}</p>
+                        {/* Scrollable Content */}
+                        <div className="overflow-y-auto flex-1 p-6">
+                            {selectedUser && (
+                                <div className="space-y-6">
+                                    {/* Avatar and basic info */}
+                                    <div className="flex flex-col items-center gap-2 pb-1">
+                                        <div className="relative">
+                                            <Avatar className="w-20 h-20 ring-2 ring-slate-100 dark:ring-slate-800 shadow-md">
+                                                <AvatarImage src={selectedUser.profileImageUrl} className="object-cover" />
+                                                <AvatarFallback className="text-xl font-black bg-slate-100 text-slate-900">
+                                                    {selectedUser.fullName[0]}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <div className={cn(
+                                                "absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white dark:border-slate-950",
+                                                selectedUser.isActive ? "bg-emerald-500" : "bg-slate-300"
+                                            )} />
+                                        </div>
+                                        <div className="text-center">
+                                            <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
+                                                {selectedUser.fullName}
+                                            </h2>
+                                            <p className="text-xs font-black uppercase tracking-wider text-slate-500 mt-0.5">
+                                                {selectedUser.userType}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Details */}
+                                    <div className="space-y-3">
+                                        {[
+                                            { label: 'Email', value: selectedUser.email || 'N/A', icon: Mail },
+                                            { label: 'Phone', value: selectedUser.phone, icon: Phone },
+                                            { label: 'Joined', value: formatDate(selectedUser.createdAt), icon: Calendar }
+                                        ].map((item, i) => (
+                                            <div key={i} className="p-3 bg-slate-50/50 dark:bg-slate-900/50 border border-slate-100/50 dark:border-slate-800/50 rounded-lg">
+                                                <p className="text-xs font-black text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                                    <item.icon size={12} className="opacity-50" />
+                                                    {item.label}
+                                                </p>
+                                                <p className="text-sm font-bold text-slate-700 dark:text-slate-300 truncate">
+                                                    {item.value}
+                                                </p>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
-                            ))}
+                            )}
                         </div>
-                        <div className="pt-1 flex flex-col items-center">
-                            <Button className="w-3/4 h-8 rounded-lg font-semibold text-[10px] uppercase tracking-wider shadow-md transition-all duration-200 active:scale-[0.97]" style={{ backgroundColor: '#4c9789', color: '#ffffff' }} onClick={() => setIsViewModalOpen(false)}>
+
+                        {/* Fixed Footer */}
+                        <div className="px-6 py-4 border-t flex justify-end">
+                            <Button
+                                variant="ghost"
+                                onClick={() => setIsViewModalOpen(false)}
+                                className="px-6"
+                            >
                                 Close
                             </Button>
                         </div>
@@ -652,75 +706,128 @@ export function ManageUsersPage() {
 
             {/* Edit User Modal */}
             <Dialog open={isEditModalOpen} onOpenChange={(open) => { setIsEditModalOpen(open); if (!open) resetForm(); }}>
-                <DialogContent className="!max-w-[280px] p-0 border-none shadow-[0_32px_64px_-16px_rgba(0,0,0,0.15)] rounded-2xl overflow-hidden bg-white dark:bg-slate-950">
-                    <div className="px-4 py-3 border-b border-slate-50 dark:border-slate-900 bg-slate-50/30">
-                        <div>
-                            <DialogTitle className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">Edit User</DialogTitle>
-                            <DialogDescription className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Update Profile</DialogDescription>
+                <DialogContent className="sm:max-w-[400px] w-[95%] md:w-full p-0">
+                    <div className="flex flex-col" style={{ maxHeight: '90vh' }}>
+                        {/* Fixed Header */}
+                        <div className="px-6 py-4 border-b">
+                            <DialogHeader>
+                                <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                                    <div className="p-2 rounded-lg bg-indigo-100 text-indigo-600">
+                                        <Edit className="w-4 h-4" />
+                                    </div>
+                                    Edit User
+                                </DialogTitle>
+                                <DialogDescription>
+                                    Update user information
+                                </DialogDescription>
+                            </DialogHeader>
                         </div>
-                    </div>
-                    <form onSubmit={handleUpdateUser} className="p-4 pt-3 space-y-3">
-                        <div className="space-y-1">
-                            <Label className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Full Name</Label>
-                            <Input
-                                value={formData.fullName}
-                                onChange={(e) => handleInputChange('fullName', e.target.value)}
-                                className="h-8 rounded-lg bg-slate-50/50 border-slate-100 dark:border-slate-900 font-bold text-xs"
-                                required
-                            />
+
+                        {/* Scrollable Content */}
+                        <div className="overflow-y-auto flex-1 p-6">
+                            <form id="edit-user-form" onSubmit={handleUpdateUser} className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-medium">Full Name</Label>
+                                    <Input
+                                        value={formData.fullName}
+                                        onChange={(e) => handleInputChange('fullName', e.target.value)}
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-medium">Email</Label>
+                                    <Input
+                                        type="email"
+                                        value={formData.email}
+                                        onChange={(e) => handleInputChange('email', e.target.value)}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-medium">Phone</Label>
+                                    <Input
+                                        value={formData.phone}
+                                        onChange={(e) => handleInputChange('phone', e.target.value)}
+                                        required
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-medium">User Type</Label>
+                                    <Select value={formData.userType} onValueChange={(val) => handleInputChange('userType', val)}>
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value={UserType.ADMIN}>Admin</SelectItem>
+                                            <SelectItem value={UserType.DONOR}>Donor</SelectItem>
+                                            <SelectItem value={UserType.BENEFICIARY}>Beneficiary</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </form>
                         </div>
-                        <div className="space-y-1">
-                            <Label className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Phone</Label>
-                            <Input
-                                value={formData.phone}
-                                onChange={(e) => handleInputChange('phone', e.target.value)}
-                                className="h-8 rounded-lg bg-slate-50/50 border-slate-100 dark:border-slate-900 font-bold text-xs"
-                                required
-                            />
-                        </div>
-                        <div className="space-y-1">
-                            <Label className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Email</Label>
-                            <Input
-                                type="email"
-                                value={formData.email}
-                                onChange={(e) => handleInputChange('email', e.target.value)}
-                                className="h-8 rounded-lg bg-slate-50/50 border-slate-100 dark:border-slate-900 font-bold text-xs"
-                            />
-                        </div>
-                        <div className="pt-2 flex flex-col items-center gap-1.5">
-                            <Button type="submit" className="w-3/4 h-8 rounded-lg font-semibold text-[10px] uppercase tracking-wider shadow-md transition-all duration-200 active:scale-[0.97]" style={{ backgroundColor: '#4c9789', color: '#ffffff' }}>
-                                Save Changes
-                            </Button>
-                            <Button type="button" variant="ghost" className="w-3/4 h-7 text-[9px] font-semibold uppercase tracking-wider text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-all duration-200" onClick={() => setIsEditModalOpen(false)}>
+
+                        {/* Fixed Footer */}
+                        <div className="px-6 py-4 border-t flex justify-end gap-3">
+                            <Button type="button" variant="outline" onClick={() => setIsEditModalOpen(false)}>
                                 Cancel
                             </Button>
+                            <Button type="submit" form="edit-user-form" className="bg-teal-600 hover:bg-teal-700 text-white">
+                                Save Changes
+                            </Button>
                         </div>
-                    </form>
+                    </div>
                 </DialogContent>
             </Dialog>
 
             {/* Delete User Modal */}
             <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
-                <DialogContent className="!max-w-[280px] p-0 border-none shadow-[0_32px_64px_-16px_rgba(0,0,0,0.15)] rounded-2xl overflow-hidden bg-white dark:bg-slate-950">
-                    <div className="px-4 py-3 border-b border-slate-50 dark:border-slate-900 bg-slate-50/30">
-                        <div>
-                            <DialogTitle className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">Delete User</DialogTitle>
-                            <DialogDescription className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Permanent Action</DialogDescription>
+                <DialogContent className="sm:max-w-[400px] w-[95%] md:w-full p-0">
+                    <div className="flex flex-col" style={{ maxHeight: '90vh' }}>
+                        {/* Fixed Header */}
+                        <div className="px-6 py-4 border-b">
+                            <DialogHeader>
+                                <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                                    <div className="p-2 rounded-lg bg-rose-100 text-rose-600">
+                                        <AlertCircle className="w-4 h-4" />
+                                    </div>
+                                    Delete User
+                                </DialogTitle>
+                                <DialogDescription>
+                                    This action cannot be undone
+                                </DialogDescription>
+                            </DialogHeader>
                         </div>
-                    </div>
-                    <div className="p-4 pt-3 space-y-3 text-center">
-                        <div className="mx-auto w-10 h-10 bg-red-50 dark:bg-red-950/20 text-red-500 rounded-xl flex items-center justify-center">
-                            <AlertCircle size={20} strokeWidth={2.5} />
+
+                        {/* Scrollable Content */}
+                        <div className="overflow-y-auto flex-1 p-6">
+                            <div className="text-center space-y-4">
+                                <div className="mx-auto w-12 h-12 bg-red-50 dark:bg-red-950/20 text-red-500 rounded-xl flex items-center justify-center">
+                                    <AlertCircle size={24} strokeWidth={2.5} />
+                                </div>
+                                <div className="space-y-2">
+                                    <p className="text-sm text-slate-500 leading-relaxed">
+                                        Are you sure you want to delete
+                                    </p>
+                                    <p className="text-lg font-black text-slate-900 dark:text-white">
+                                        {selectedUser?.fullName}
+                                    </p>
+                                    <p className="text-sm text-slate-500">
+                                        This action cannot be undone.
+                                    </p>
+                                </div>
+                            </div>
                         </div>
-                        <div className="space-y-1">
-                            <p className="text-[10px] font-bold text-slate-500 leading-relaxed px-2">Are you sure you want to delete<br /><span className="text-slate-900 dark:text-white font-black">{selectedUser?.fullName}</span>?<br />This cannot be undone.</p>
-                        </div>
-                        <div className="pt-1 flex flex-col items-center gap-1.5">
-                            <Button className="w-3/4 h-8 rounded-lg font-semibold text-[10px] uppercase tracking-wider shadow-md transition-all duration-200 active:scale-[0.97]" style={{ backgroundColor: '#d4183d', color: '#ffffff' }} onClick={handleDeleteUser}>
-                                Delete User
-                            </Button>
-                            <Button variant="ghost" className="w-3/4 h-7 text-[9px] font-semibold uppercase tracking-wider text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-all duration-200" onClick={() => setIsDeleteModalOpen(false)}>
+
+                        {/* Fixed Footer */}
+                        <div className="px-6 py-4 border-t flex justify-end gap-3">
+                            <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)}>
                                 Cancel
+                            </Button>
+                            <Button
+                                className="bg-rose-600 hover:bg-rose-700 text-white"
+                                onClick={handleDeleteUser}
+                            >
+                                Delete User
                             </Button>
                         </div>
                     </div>

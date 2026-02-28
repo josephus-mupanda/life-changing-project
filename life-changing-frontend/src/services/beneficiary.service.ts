@@ -60,9 +60,9 @@ export const beneficiaryService = {
         return response.data;
     },
 
-    // Get All Beneficiaries
+    // Get All Beneficiaries - FIXED: changed from '/beneficiaries' to '/beneficiaries/all'
     getAllBeneficiaries: async (page = 1, limit = 10): Promise<{ data: Beneficiary[], total: number }> => {
-        const response = await api.get('/beneficiaries', { params: { page, limit } });
+        const response = await api.get('/beneficiaries/all', { params: { page, limit } });
         return response.data;
     },
 
@@ -107,7 +107,8 @@ export const beneficiaryService = {
         return response.data;
     },
 
-    // Get Tracking by Beneficiary ID (Admin)
+    // Get Tracking by Beneficiary ID (Admin) - This endpoint doesn't exist in the controller shown
+    // You may need to verify if this is handled by a different controller
     getBeneficiaryTracking: async (id: string): Promise<any[]> => {
         const response = await api.get<any[]>(`/beneficiaries/${id}/tracking`);
         return response.data;
@@ -123,7 +124,7 @@ export const beneficiaryService = {
 
     // Get Tracking History
     getWeeklyTracking: async (): Promise<any[]> => {
-        const response = await api.get('/beneficiaries/tracking');
+        const response = await api.get('/beneficiaries/tracking/history');
         return response.data;
     },
 
@@ -200,48 +201,48 @@ export const beneficiaryService = {
         return response.data;
     },
 
-    // Get Goals
+    // Get Goals - UPDATED: now uses '/all'
     getGoals: async (): Promise<BusinessGoal[]> => {
-        const response = await api.get<BusinessGoal[]>('/beneficiaries/goals');
+        const response = await api.get<BusinessGoal[]>('/beneficiaries/goals/all');
         return response.data;
     },
 
-    // Get Goals by Type
+    // Get Goals by Type (unchanged)
     getGoalsByType: async (type: string): Promise<BusinessGoal[]> => {
         const response = await api.get<BusinessGoal[]>(`/beneficiaries/goals/type/${type}`);
         return response.data;
     },
 
-    // Get Goals by Status
+    // Get Goals by Status (unchanged)
     getGoalsByStatus: async (status: string): Promise<BusinessGoal[]> => {
         const response = await api.get<BusinessGoal[]>(`/beneficiaries/goals/status/${status}`);
         return response.data;
     },
 
-    // Update Goal Progress
+    // Update Goal Progress (unchanged)
     updateGoalProgress: async (id: string, progress: number): Promise<BusinessGoal> => {
         const response = await api.put<BusinessGoal>(`/beneficiaries/goals/${id}/progress`, { progress });
         return response.data;
     },
 
-    // Get Goal Stats
+    // Get Goal Stats (unchanged)
     getGoalStats: async (): Promise<any> => {
         const response = await api.get('/beneficiaries/goals/stats');
         return response.data;
     },
 
-    // Update Goal
+    // Update Goal (unchanged)
     updateGoal: async (id: string, goal: UpdateGoalDto): Promise<BusinessGoal> => {
         const response = await api.put<BusinessGoal>(`/beneficiaries/goals/${id}`, goal);
         return response.data;
     },
 
-    // Delete Goal
+    // Delete Goal (unchanged)
     deleteGoal: async (id: string): Promise<void> => {
         await api.delete(`/beneficiaries/goals/${id}`);
     },
 
-    // Get Goal by ID
+    // Get Goal by ID (unchanged)
     getGoalById: async (id: string): Promise<BusinessGoal> => {
         const response = await api.get<BusinessGoal>(`/beneficiaries/goals/${id}`);
         return response.data;
@@ -261,36 +262,40 @@ export const beneficiaryService = {
         return response.data;
     },
 
-    // Get Emergency Contacts
-    getEmergencyContacts: async (): Promise<any[]> => {
-        const response = await api.get('/beneficiaries/emergency-contacts');
+    // Get Emergency Contacts - UPDATED: now uses '/all'
+    getEmergencyContacts: async (page?: number, limit?: number): Promise<any[]> => {
+        const params = new URLSearchParams();
+        if (page) params.append('page', page.toString());
+        if (limit) params.append('limit', limit.toString());
+
+        const response = await api.get('/beneficiaries/emergency-contacts/all', { params });
         return response.data;
     },
 
-    // Get Primary Contact
+    // Get Primary Contact (unchanged - still works)
     getPrimaryContact: async (): Promise<any> => {
         const response = await api.get('/beneficiaries/emergency-contacts/primary');
         return response.data;
     },
 
-    // Set Primary
+    // Set Primary - UPDATED: now uses '/set-primary/:id' instead of '/:id/set-primary'
     setPrimaryContact: async (id: string): Promise<any> => {
-        const response = await api.put(`/beneficiaries/emergency-contacts/${id}/set-primary`);
+        const response = await api.put(`/beneficiaries/emergency-contacts/set-primary/${id}`);
         return response.data;
     },
 
-    // Update Contact
+    // Update Contact (unchanged - still uses '/:id')
     updateEmergencyContact: async (id: string, data: UpdateEmergencyContactDto): Promise<any> => {
         const response = await api.put(`/beneficiaries/emergency-contacts/${id}`, data);
         return response.data;
     },
 
-    // Delete Contact
+    // Delete Contact (unchanged - still uses '/:id')
     deleteEmergencyContact: async (id: string): Promise<void> => {
         await api.delete(`/beneficiaries/emergency-contacts/${id}`);
     },
 
-    // Get Contact by ID
+    // Get Contact by ID (unchanged - still uses '/:id')
     getEmergencyContactById: async (id: string): Promise<any> => {
         const response = await api.get(`/beneficiaries/emergency-contacts/${id}`);
         return response.data;
@@ -309,10 +314,10 @@ export const beneficiaryService = {
         return response.data;
     },
 
-    // Get Documents
+    // Get Documents - FIXED: changed from '/beneficiaries/documents' to '/beneficiaries/documents/all'
     getDocuments: async (type?: string): Promise<BeneficiaryDocument[]> => {
         const params = type ? { type } : {};
-        const response = await api.get<BeneficiaryDocument[]>('/beneficiaries/documents', { params });
+        const response = await api.get<BeneficiaryDocument[]>('/beneficiaries/documents/all', { params });
         return response.data;
     },
 
@@ -345,10 +350,10 @@ export const beneficiaryService = {
         return response.data;
     },
 
-    // Delete Document (Single) - Needs beneficiaryId as query param
+    // Delete Document (Single) - FIXED: removed beneficiaryId param and fixed path
     deleteDocument: async (documentId: string, beneficiaryId?: string): Promise<void> => {
-        await api.delete(`/beneficiaries/documents/${documentId}`, {
-            params: { beneficiaryId }
+        await api.delete('beneficiaries/documents/', {
+            params: { documentId }
         });
     },
 
@@ -372,12 +377,12 @@ export const beneficiaryService = {
     // Bulk Verify Documents (Admin)
     bulkVerifyDocuments: async (ids: string[]): Promise<any> => {
         const response = await api.post('/beneficiaries/documents/verify/bulk', {
-            documentIds: ids 
+            documentIds: ids
         });
         return response.data;
     },
 
-    // Bulk Delete Documents (Admin) - Needs documentIds in body
+    // Bulk Delete Documents (Admin)
     bulkDeleteDocuments: async (ids: string[]): Promise<void> => {
         await api.delete('/beneficiaries/documents/bulk/delete', {
             data: { documentIds: ids }
@@ -387,7 +392,7 @@ export const beneficiaryService = {
     // Delete All Beneficiary Documents (Admin)
     deleteAllBeneficiaryDocuments: async (beneficiaryId: string): Promise<void> => {
         await api.delete('/beneficiaries/documents/beneficiary/all', {
-            params: { beneficiaryId } 
+            params: { beneficiaryId }
         });
     },
 

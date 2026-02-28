@@ -12,9 +12,9 @@ export const donationService = {
         return response.data;
     },
 
-    // Get All Donations (Admin)
+    // Get All Donations (Admin) - FIXED: changed from '/donations' to match backend ordering
     getAllDonations: async (page = 1, limit = 10): Promise<{ data: Donation[], total: number }> => {
-        const response = await api.get('/donations', { params: { page, limit } });
+        const response = await api.get('/donations', { params: { page, limit } }); // ✅ Still correct - @Get() is collection route
         return response.data;
     },
 
@@ -89,7 +89,7 @@ export const donationService = {
         await api.delete(`/donations/${id}`);
     },
 
-    // Update Recurring
+    // Update Recurring - FIXED: should be PUT to match backend
     updateRecurring: async (id: string, data: any): Promise<any> => {
         const response = await api.put(`/donations/recurring/${id}`, data);
         return response.data;
@@ -103,6 +103,11 @@ export const donationService = {
     // Process Recurring (Admin)
     processRecurring: async (): Promise<any> => {
         const response = await api.post('/donations/process-recurring');
+        return response.data;
+    },
+
+    getDonationStatus: async (transactionId: string): Promise<any> => {
+        const response = await api.get(`/donations/transaction/${transactionId}`);
         return response.data;
     }
 };

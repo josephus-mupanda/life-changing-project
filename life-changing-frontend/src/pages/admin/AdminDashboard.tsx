@@ -1,12 +1,12 @@
 ﻿import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Users, Heart, FolderKanban, TrendingUp, Award, DollarSign } from 'lucide-react';
-import { StatsCard } from '../components/StatsCard';
-import { PageHeader } from '../components/layout/PageHeader';
-import { PageSkeleton } from '../components/Skeletons';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
-import { Button } from '../components/ui/button';
+import { StatsCard } from '../../components/StatsCard';
+import { PageHeader } from '../../components/layout/PageHeader';
+import { PageSkeleton } from '../../components/Skeletons';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
+import { Badge } from '../../components/ui/badge';
+import { Button } from '../../components/ui/button';
 import {
   Table,
   TableBody,
@@ -14,7 +14,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '../components/ui/table';
+} from '../../components/ui/table';
 import {
   LineChart,
   Line,
@@ -32,7 +32,7 @@ import { beneficiaryService } from '@/services/beneficiary.service';
 import { donorService } from '@/services/donor.service';
 import { donationService } from '@/services/donation.service';
 import { programsService } from '@/services/programs.service';
-import { Beneficiary, Donor, Program, ProgramCategory, ProgramStatus, BeneficiaryStatus } from '../lib/types';
+import { Beneficiary, Donor, Program, ProgramCategory, ProgramStatus, BeneficiaryStatus } from '../../lib/types';
 import { format } from 'date-fns';
 
 // Define types for API responses

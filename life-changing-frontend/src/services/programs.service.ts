@@ -99,9 +99,6 @@ export const programsService = {
 
     // Get Project by ID
     getProject: async (programId: string, projectId: string): Promise<Project> => {
-        // Spec says: GET /api/v1/programs/{programId}/projects/{projectId}
-        // Also: GET /api/v1/projects/{projectId} (public wrapper likely)
-        // Let's support the specific program one as primary for this service
         const response = await api.get<any>(`/programs/${programId}/projects/${projectId}`);
         return response.data?.data || response.data;
     },

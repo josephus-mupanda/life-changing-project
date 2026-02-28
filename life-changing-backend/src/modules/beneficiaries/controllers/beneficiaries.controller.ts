@@ -1,4 +1,3 @@
-// src/modules/beneficiaries/controllers/beneficiaries.controller.ts
 import {
     Controller,
     Get,
@@ -34,6 +33,7 @@ import { AssignProgramDto } from '../dto/assign-program.dto';
 export class BeneficiariesController {
     constructor(private readonly beneficiariesService: BeneficiariesService) { }
 
+    // ================= PROFILE ROUTES (SPECIFIC) FIRST =================
     @Post('profile')
     @Roles(UserType.BENEFICIARY)
     @ApiBearerAuth()
@@ -122,6 +122,7 @@ export class BeneficiariesController {
         };
     }
 
+    // ================= ADMIN SPECIFIC ROUTES =================
     @Get('attention-required')
     @Roles(UserType.ADMIN)
     @ApiBearerAuth()
@@ -129,7 +130,6 @@ export class BeneficiariesController {
     async getBeneficiariesRequiringAttention(@Query() paginationParams: PaginationParams) {
         return this.beneficiariesService.getBeneficiariesRequiringAttention(paginationParams);
     }
-
 
     @Get('search')
     @Roles(UserType.ADMIN)
@@ -155,7 +155,16 @@ export class BeneficiariesController {
         return this.beneficiariesService.getBeneficiaryStats();
     }
 
-    @Get()
+    @Get('unassigned')
+    @Roles(UserType.ADMIN)
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Get beneficiaries without program assignment' })
+    async getUnassignedBeneficiaries(@Query() paginationParams: PaginationParams) {
+        return this.beneficiariesService.getUnassignedBeneficiaries(paginationParams);
+    }
+
+    // ================= COLLECTION ROUTES =================
+    @Get('all')  // Changed from @Get() to @Get('all')
     @Roles(UserType.ADMIN)
     @ApiBearerAuth()
     @ApiOperation({ summary: 'Get all beneficiaries (admin only)' })
@@ -167,35 +176,7 @@ export class BeneficiariesController {
         return this.beneficiariesService.paginate(paginationParams, {}, ['user', 'program']);
     }
 
-    @Get('unassigned')
-    @Roles(UserType.ADMIN)
-    @ApiBearerAuth()
-    @ApiOperation({ summary: 'Get beneficiaries without program assignment' })
-    async getUnassignedBeneficiaries(@Query() paginationParams: PaginationParams) {
-        return this.beneficiariesService.getUnassignedBeneficiaries(paginationParams);
-    }
-
-    @Get(':id')
-    @Roles(UserType.ADMIN)
-    @ApiBearerAuth()
-    @ApiOperation({ summary: 'Get beneficiary by ID' })
-    async getBeneficiaryById(
-        @Param('id') id: string,
-    ) {
-        return this.beneficiariesService.findBeneficiaryById(id);
-    }
-
-    @Post(':id/assign-program')
-    @Roles(UserType.ADMIN)
-    @ApiBearerAuth()
-    @ApiOperation({ summary: 'Assign beneficiary to a program' })
-    async assignProgram(
-        @Param('id') beneficiaryId: string,
-        @Body() assignProgramDto: AssignProgramDto
-    ) {
-        return this.beneficiariesService.assignProgram(beneficiaryId, assignProgramDto);
-    }
-
+    // ================= PARAM ROUTES (PROGRAM AND STATUS) BEFORE ID =================
     @Get('program/:programId')
     @Roles(UserType.ADMIN)
     @ApiBearerAuth()
@@ -218,6 +199,27 @@ export class BeneficiariesController {
         return this.beneficiariesService.getBeneficiariesByStatus(status, paginationParams);
     }
 
+    // ================= ID ROUTES LAST =================
+    @Get(':id')
+    @Roles(UserType.ADMIN)
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Get beneficiary by ID' })
+    async getBeneficiaryById(
+        @Param('id') id: string,
+    ) {
+        return this.beneficiariesService.findBeneficiaryById(id);
+    }
+
+    @Post(':id/assign-program')
+    @Roles(UserType.ADMIN)
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Assign beneficiary to a program' })
+    async assignProgram(
+        @Param('id') beneficiaryId: string,
+        @Body() assignProgramDto: AssignProgramDto
+    ) {
+        return this.beneficiariesService.assignProgram(beneficiaryId, assignProgramDto);
+    }
 
     @Put(':id/graduate')
     @Roles(UserType.ADMIN)
@@ -271,6 +273,7 @@ export class BeneficiariesController {
             programEnrollmentMissing
         };
     }
+    
     private calculateCompletionPercentage(basicProfileMissing: string[], programEnrollmentMissing: string[]): {
         basicProfilePercentage: number;
         programEnrollmentPercentage: number;

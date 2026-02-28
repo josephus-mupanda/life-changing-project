@@ -20,6 +20,29 @@ export class StripeService {
         });
     }
 
+     async createCustomer(data: {
+        email: string | null;
+        name: string;
+        metadata?: Record<string, any>;
+    }): Promise<Stripe.Customer> {
+        try {
+            this.logger.log(`Creating Stripe customer for email: ${data.email}`);
+            
+            const customer = await this.stripe.customers.create({
+                email: data.email!,
+                name: data.name,
+                metadata: data.metadata || {},
+            });
+
+            this.logger.log(`Stripe customer created successfully: ${customer.id}`);
+            return customer;
+        } catch (error) {
+            this.logger.error('Failed to create Stripe customer:', error);
+            throw error;
+        }
+    }
+
+
     async createPaymentIntent(data: {
         amount: number;
         currency: string;

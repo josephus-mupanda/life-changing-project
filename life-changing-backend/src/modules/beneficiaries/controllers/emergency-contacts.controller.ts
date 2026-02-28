@@ -45,7 +45,26 @@ export class EmergencyContactsController {
     return this.contactsService.createContact(beneficiary.id, createContactDto);
   }
 
-  @Get()
+  // 👇 SPECIFIC ROUTES FIRST
+  @Get('primary')
+  @Roles(UserType.BENEFICIARY, UserType.ADMIN)
+  @ApiOperation({ summary: 'Get primary emergency contact' })
+  async getPrimaryContact(@CurrentBeneficiary() beneficiary: Beneficiary) {
+    return this.contactsService.getPrimaryContact(beneficiary.id);
+  }
+
+  @Put('set-primary/:id')  // Changed from ':id/set-primary' to avoid parameter conflict
+  @Roles(UserType.BENEFICIARY, UserType.ADMIN)
+  @ApiOperation({ summary: 'Set contact as primary' })
+  async setPrimaryContact(
+    @Param('id') id: string,
+    @CurrentBeneficiary() beneficiary: Beneficiary
+  ) {
+    await this.checkContactOwnership(id, beneficiary.id);
+    return this.contactsService.setPrimaryContact(id);
+  }
+
+  @Get('all')
   @Roles(UserType.BENEFICIARY, UserType.ADMIN)
   @ApiOperation({ summary: 'Get emergency contacts' })
   @ApiQuery({ name: 'page', required: false })
@@ -57,24 +76,7 @@ export class EmergencyContactsController {
     return this.contactsService.getBeneficiaryContacts(beneficiary.id, paginationParams);
   }
 
-  @Get('primary')
-  @Roles(UserType.BENEFICIARY, UserType.ADMIN)
-  @ApiOperation({ summary: 'Get primary emergency contact' })
-  async getPrimaryContact(@CurrentBeneficiary() beneficiary: Beneficiary) {
-    return this.contactsService.getPrimaryContact(beneficiary.id);
-  }
-
-  @Put(':id/set-primary')
-  @Roles(UserType.BENEFICIARY, UserType.ADMIN)
-  @ApiOperation({ summary: 'Set contact as primary' })
-  async setPrimaryContact(
-    @Param('id') id: string,
-    @CurrentBeneficiary() beneficiary: Beneficiary
-  ) {
-    await this.checkContactOwnership(id, beneficiary.id);
-    return this.contactsService.setPrimaryContact(id);
-  }
-
+  // 👇 GENERIC PARAM ROUTES LAST
   @Put(':id')
   @Roles(UserType.BENEFICIARY, UserType.ADMIN)
   @ApiOperation({ summary: 'Update emergency contact' })

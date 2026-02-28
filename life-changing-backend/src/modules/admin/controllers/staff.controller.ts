@@ -1,4 +1,3 @@
-// src/modules/admin/controllers/staff.controller.ts
 import {
     Controller,
     Get,
@@ -33,6 +32,7 @@ import { Staff } from '../entities/staff.entity';
 export class StaffController {
     constructor(private readonly staffService: StaffService) { }
 
+    // ================= PROFILE ROUTES (SPECIFIC) FIRST =================
     @Post('profile')
     @Roles(UserType.ADMIN)
     @ApiBearerAuth()
@@ -75,48 +75,6 @@ export class StaffController {
         return this.staffService.updateStaff(staff.id, updateStaffDto);
     }
 
-    @Get()
-    @Roles(UserType.ADMIN)
-    @ApiBearerAuth()
-    @ApiOperation({ summary: 'Get all staff (admin only)' })
-    @ApiQuery({ name: 'page', required: false })
-    @ApiQuery({ name: 'limit', required: false })
-    @ApiQuery({ name: 'sortBy', required: false })
-    @ApiQuery({ name: 'sortOrder', required: false })
-    async getAllStaff(@Query() paginationParams: PaginationParams) {
-        return this.staffService.paginate(paginationParams, {}, ['user']);
-    }
-
-    @Get('department/:department')
-    @Roles(UserType.ADMIN)
-    @ApiBearerAuth()
-    @ApiOperation({ summary: 'Get staff by department' })
-    async getStaffByDepartment(
-        @Param('department') department: string,
-        @Query() paginationParams: PaginationParams,
-    ) {
-        return this.staffService.getStaffByDepartment(department, paginationParams);
-    }
-
-    @Get('search')
-    @Roles(UserType.ADMIN)
-    @ApiBearerAuth()
-    @ApiOperation({ summary: 'Search staff' })
-    async searchStaff(
-        @Query('q') query: string,
-        @Query() paginationParams: PaginationParams,
-    ) {
-        return this.staffService.searchStaff(query, paginationParams);
-    }
-
-    @Get('stats')
-    @Roles(UserType.ADMIN)
-    @ApiBearerAuth()
-    @ApiOperation({ summary: 'Get staff statistics' })
-    async getStaffStats() {
-        return this.staffService.getStaffStats();
-    }
-
     @Get('profile/status')
     @Roles(UserType.ADMIN)
     @ApiBearerAuth()
@@ -142,5 +100,50 @@ export class StaffController {
             missingFields,
             profile: staff
         };
+    }
+
+    // ================= ADMIN SPECIFIC ROUTES =================
+    @Get('search')
+    @Roles(UserType.ADMIN)
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Search staff' })
+    async searchStaff(
+        @Query('q') query: string,
+        @Query() paginationParams: PaginationParams,
+    ) {
+        return this.staffService.searchStaff(query, paginationParams);
+    }
+
+    @Get('stats')
+    @Roles(UserType.ADMIN)
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Get staff statistics' })
+    async getStaffStats() {
+        return this.staffService.getStaffStats();
+    }
+
+    // ================= ADMIN FILTER ROUTES =================
+    @Get('department/:department')
+    @Roles(UserType.ADMIN)
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Get staff by department' })
+    async getStaffByDepartment(
+        @Param('department') department: string,
+        @Query() paginationParams: PaginationParams,
+    ) {
+        return this.staffService.getStaffByDepartment(department, paginationParams);
+    }
+
+    // ================= ADMIN COLLECTION ROUTE =================
+    @Get()
+    @Roles(UserType.ADMIN)
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Get all staff (admin only)' })
+    @ApiQuery({ name: 'page', required: false })
+    @ApiQuery({ name: 'limit', required: false })
+    @ApiQuery({ name: 'sortBy', required: false })
+    @ApiQuery({ name: 'sortOrder', required: false })
+    async getAllStaff(@Query() paginationParams: PaginationParams) {
+        return this.staffService.paginate(paginationParams, {}, ['user']);
     }
 }

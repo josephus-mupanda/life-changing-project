@@ -20,15 +20,31 @@ interface PaypackCashInResponse {
 }
 
 interface PaypackTransactionEvent {
-  ref: string;
-  status: string;
-  amount: number;
-  fee: number;
-  provider: string;
-  msisdn: string;
-  created_at: string;
-  updated_at: string;
-  metadata?: any;
+  amount?: number;
+  client?: string;
+  'event-kind'?: string;
+  kind?: string;
+  limit?: number;
+  offset?: number;
+  ref?: string;
+  status?: string;
+  total?: number;
+  transactions?: Array<{
+    event_id: string;
+    event_kind: string;
+    created_at: string;
+    data: {
+      ref: string;
+      kind: string;
+      fee: number;
+      merchant: string;
+      client: string;
+      amount: number;
+      status: string;
+      created_at: string;
+      processed_at: string;
+    };
+  }>;
 }
 
 @Injectable()
@@ -92,6 +108,7 @@ export class PaypackService {
     }
   }
 
+  
   private async makeRequest<T>(
     method: 'get' | 'post',
     endpoint: string,
@@ -110,6 +127,7 @@ export class PaypackService {
           'Content-Type': 'application/json',
         },
         data,
+        timeout: 15000,
       });
 
       this.logger.debug(`✅ Paypack Response received`);
@@ -216,36 +234,36 @@ export class PaypackService {
     
     const response = await this.makeRequest<PaypackTransactionEvent>(
       'get',
-      `/transactions/${transactionId}/event`
+    `/events/transactions?ref=${transactionId}&kind=CASHIN&limit=1`
     );
 
     this.logger.log(`✅ Payment verification completed. Status: ${response.status}`);
     return response;
   }
 
-  async refundPayment(transactionId: string, amount?: number): Promise<any> {
-    this.logger.log(`↩️ Processing refund for transaction: ${transactionId}`);
+  // async refundPayment(transactionId: string, amount?: number): Promise<any> {
+  //   this.logger.log(`↩️ Processing refund for transaction: ${transactionId}`);
 
-    // First get the original transaction details
-    const transaction = await this.verifyPayment(transactionId);
+  //   // First get the original transaction details
+  //   const transaction = await this.verifyPayment(transactionId);
 
-    const refundResponse = await this.makeRequest<any>(
-      'post',
-      '/transactions/cashout',
-      {
-        amount: amount || transaction.amount,
-        number: transaction.msisdn,
-        mode: transaction.provider,
-        metadata: {
-          original_transaction: transactionId,
-          refund_reason: 'Donation refund',
-        },
-      }
-    );
+  //   const refundResponse = await this.makeRequest<any>(
+  //     'post',
+  //     '/transactions/cashout',
+  //     {
+  //       amount: amount || transaction.amount,
+  //       number: transaction.msisdn,
+  //       mode: transaction.provider,
+  //       metadata: {
+  //         original_transaction: transactionId,
+  //         refund_reason: 'Donation refund',
+  //       },
+  //     }
+  //   );
 
-    this.logger.log(`✅ Refund processed. Refund ID: ${refundResponse.ref}`);
-    return refundResponse;
-  }
+  //   this.logger.log(`✅ Refund processed. Refund ID: ${refundResponse.ref}`);
+  //   return refundResponse;
+  // }
 
   async getBalance(): Promise<{ balance: number; currency: string }> {
     this.logger.log('💰 Fetching Paypack balance');

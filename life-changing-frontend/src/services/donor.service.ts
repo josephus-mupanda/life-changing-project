@@ -14,9 +14,9 @@ export const donorService = {
         return response.data;
     },
 
-    // Create Profile
+    // Create Profile - FIXED: changed from '/donors' to '/donors/profile'
     createProfile: async (data: CreateDonorDto): Promise<Donor> => {
-        const response = await api.post<Donor>('/donors', data);
+        const response = await api.post<Donor>('/donors/profile', data);
         return response.data;
     },
 
@@ -26,13 +26,13 @@ export const donorService = {
         return response.data;
     },
 
-    // Get My Donations
+    // Get My Donations (uses donation service, so correct)
     getMyDonations: async (): Promise<Donation[]> => {
         const response = await api.get<Donation[]>('/donations/my-donations');
         return response.data;
     },
 
-    // Make Donation
+    // Make Donation (uses donation service, so correct)
     makeDonation: async (data: CreateDonationDto): Promise<Donation> => {
         const response = await api.post<Donation>('/donations', data);
         return response.data;

@@ -1,3 +1,4 @@
+// src/modules/donations/entities/recurring-donation.entity.ts
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -10,7 +11,7 @@ import {
 import { Donor } from './donor.entity';
 import { Project } from '../../programs/entities/project.entity';
 import { Program } from '../../programs/entities/program.entity';
-import { RecurringFrequency, RecurringStatus } from '../../../config/constants';
+import { RecurringFrequency, RecurringStatus, PaymentMethod } from '../../../config/constants';
 
 @Entity('recurring_donations')
 export class RecurringDonation {
@@ -32,6 +33,13 @@ export class RecurringDonation {
     enum: RecurringFrequency,
   })
   frequency: RecurringFrequency;
+
+  @Column({
+    name: 'payment_method',
+    type: 'enum',
+    enum: PaymentMethod,
+  })
+  paymentMethod: PaymentMethod;
 
   @ManyToOne(() => Project, { nullable: true })
   @JoinColumn({ name: 'project_id' })
@@ -57,19 +65,28 @@ export class RecurringDonation {
   @Column({ name: 'last_charge_id', nullable: true })
   lastChargeId: string;
 
-  @Column({ name: 'payment_method_id' })
+  // Stripe specific fields
+  @Column({ name: 'payment_method_id', nullable: true })
   paymentMethodId: string;
 
-  @Column({ name: 'subscription_id' })
+  @Column({ name: 'subscription_id', nullable: true })
   subscriptionId: string;
 
-  @Column({ name: 'payment_method_details', type: 'jsonb' })
+  // Paypack specific fields
+  @Column({ name: 'phone_number', nullable: true })
+  phoneNumber: string;
+
+  @Column({ name: 'payment_method_details', type: 'jsonb', nullable: true })
   paymentMethodDetails: {
-    type: string;
+    type: 'card' | 'mobile_money';
+    // Card details
     last4?: string;
     brand?: string;
     expiryMonth?: number;
     expiryYear?: number;
+    // Mobile money details
+    provider?: 'mtn' | 'airtel';
+    phoneNumber?: string;
   };
 
   @Column({ name: 'total_charges', type: 'int', default: 0 })

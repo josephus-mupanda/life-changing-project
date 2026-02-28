@@ -95,7 +95,6 @@ export enum PaymentStatus {
 export enum PaymentProvider {
   STRIPE = 'stripe',
   PAYPACK = 'paypack',
-  MANUAL = 'manual',
 }
 
 // Donation Types

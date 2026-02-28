@@ -64,76 +64,75 @@ export class UsersController {
     private readonly staffService: StaffService,
   ) { }
 
+  // ================= SPECIFIC ROUTES FIRST =================
+  @Get('incomplete-profiles')
+  @Roles(UserType.ADMIN)
+  @ApiOperation({ summary: 'Get all users with incomplete profiles (Admin only)' })
+  @ApiQuery({ name: 'userType', required: false, enum: UserType })
+  async getIncompleteProfiles(@Query('userType') userType?: UserType) {
+    const users = await this.usersService.findAll(
+      userType ? { userType } : undefined
+    );
 
-  // Optional: Add endpoint to get all users with incomplete profiles
- @Get('incomplete-profiles')
-@Roles(UserType.ADMIN)
-@ApiOperation({ summary: 'Get all users with incomplete profiles (Admin only)' })
-@ApiQuery({ name: 'userType', required: false, enum: UserType })
-async getIncompleteProfiles(@Query('userType') userType?: UserType) {
-  const users = await this.usersService.findAll(
-    userType ? { userType } : undefined
-  );
+    const results: IncompleteProfileUser[] = [];
 
-  const results: IncompleteProfileUser[] = [];
+    for (const user of users) {
+      let isComplete = false;
+      let profileType = '';
+      let missingFields: string[] = [];
 
-  for (const user of users) {
-    let isComplete = false;
-    let profileType = '';
-    let missingFields: string[] = [];
+      switch (user.userType) {
+        case UserType.DONOR:
+          const donor = await this.donorsService.findDonorByUserId(user.id);
+          profileType = 'donor';
+          if (donor) {
+            missingFields = this.getMissingDonorFields(donor);
+            isComplete = missingFields.length === 0;
+          } else {
+            missingFields = ['profile_not_created'];
+          }
+          break;
+        case UserType.BENEFICIARY:
+          const beneficiary = await this.beneficiariesService.findBeneficiaryByUserId(user.id);
+          profileType = 'beneficiary';
+          if (beneficiary) {
+            missingFields = this.getMissingBeneficiaryFields(beneficiary);
+            isComplete = missingFields.length === 0;
+          } else {
+            missingFields = ['profile_not_created'];
+          }
+          break;
+        case UserType.ADMIN:
+          const staff = await this.staffService.findStaffByUserId(user.id);
+          profileType = 'staff';
+          if (staff) {
+            missingFields = this.getMissingStaffFields(staff);
+            isComplete = missingFields.length === 0;
+          } else {
+            missingFields = ['profile_not_created'];
+          }
+          break;
+      }
 
-    switch (user.userType) {
-      case UserType.DONOR:
-        const donor = await this.donorsService.findDonorByUserId(user.id);
-        profileType = 'donor';
-        if (donor) {
-          missingFields = this.getMissingDonorFields(donor);
-          isComplete = missingFields.length === 0;
-        } else {
-          missingFields = ['profile_not_created'];
-        }
-        break;
-      case UserType.BENEFICIARY:
-        const beneficiary = await this.beneficiariesService.findBeneficiaryByUserId(user.id);
-        profileType = 'beneficiary';
-        if (beneficiary) {
-          missingFields = this.getMissingBeneficiaryFields(beneficiary);
-          isComplete = missingFields.length === 0;
-        } else {
-          missingFields = ['profile_not_created'];
-        }
-        break;
-      case UserType.ADMIN:
-        const staff = await this.staffService.findStaffByUserId(user.id);
-        profileType = 'staff';
-        if (staff) {
-          missingFields = this.getMissingStaffFields(staff);
-          isComplete = missingFields.length === 0;
-        } else {
-          missingFields = ['profile_not_created'];
-        }
-        break;
+      if (!isComplete) {
+        results.push({
+          userId: user.id,
+          fullName: user.fullName,
+          email: user.email,
+          phone: user.phone,
+          userType: user.userType,
+          profileType,
+          registeredAt: user.createdAt,
+          missingFields: missingFields // Add this to see what's missing
+        });
+      }
     }
-
-    if (!isComplete) {
-      results.push({
-        userId: user.id,
-        fullName: user.fullName,
-        email: user.email,
-        phone: user.phone,
-        userType: user.userType,
-        profileType,
-        registeredAt: user.createdAt,
-        missingFields: missingFields // Add this to see what's missing
-      });
-    }
+    return {
+      totalIncomplete: results.length,
+      users: results
+    };
   }
-  return {
-    totalIncomplete: results.length,
-    users: results
-  };
-}
-  // LIST PENDING ACTIVATION USERS (Admin only)
+
   @Get('pending-activation')
   @Roles(UserType.ADMIN)
   @ApiBearerAuth()
@@ -183,22 +182,12 @@ async getIncompleteProfiles(@Query('userType') userType?: UserType) {
     return this.usersService.paginate(paginationParams);
   }
 
-  @Get(':id')
-  @Roles(UserType.ADMIN)
-  @ApiOperation({ summary: 'Get user by ID (Admin only)' })
-  @ApiResponse({ status: 200, description: 'User found' })
-  @ApiResponse({ status: 404, description: 'User not found' })
-  async findOne(@Param('id') id: string) {
-    return this.usersService.findById(id);
-  }
-
-  @Patch(':id')
-  @Roles(UserType.ADMIN)
-  @ApiOperation({ summary: 'Update user (Admin only)' })
-  @ApiResponse({ status: 200, description: 'User updated' })
-  @ApiResponse({ status: 404, description: 'User not found' })
-  async update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    return this.usersService.updateUser(id, updateUserDto);
+  // ================= PARAM ROUTES LAST =================
+  @Get(':id/status')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get user account status' })
+  async getUserStatus(@Param('id') id: string) {
+    return this.usersService.getUserStatus(id);
   }
 
   @Get(':id/profile-status')
@@ -298,6 +287,73 @@ async getIncompleteProfiles(@Query('userType') userType?: UserType) {
     };
   }
 
+  @Get(':id')
+  @Roles(UserType.ADMIN)
+  @ApiOperation({ summary: 'Get user by ID (Admin only)' })
+  @ApiResponse({ status: 200, description: 'User found' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async findOne(@Param('id') id: string) {
+    return this.usersService.findById(id);
+  }
+
+  @Patch(':id')
+  @Roles(UserType.ADMIN)
+  @ApiOperation({ summary: 'Update user (Admin only)' })
+  @ApiResponse({ status: 200, description: 'User updated' })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+    return this.usersService.updateUser(id, updateUserDto);
+  }
+
+  @Patch(':id/activate')
+  @Roles(UserType.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Activate/deactivate user account (Admin only)' })
+  async activateUser(
+    @Param('id') id: string,
+    @Body() activateDto: ActivateUserDto,
+    @CurrentUser() adminUser: AuthUser, // Use CurrentUser decorator
+  ) {
+    // Pass admin ID from current user
+    return this.usersService.activateUser(id, activateDto, adminUser.id);
+  }
+
+  @Patch(':id/deactivate')
+  @Roles(UserType.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Deactivate user account (Admin only)' })
+  async deactivateUser(
+    @Param('id') id: string,
+    @Body() deactivateDto: DeactivateUserDto,
+    @CurrentUser() adminUser: AuthUser,
+  ) {
+    // Create activateDto with isActive: false
+    const activateDto: ActivateUserDto = {
+      isActive: false,
+      reason: deactivateDto.reason,
+    };
+
+    return this.usersService.activateUser(id, activateDto, adminUser.id);
+  }
+
+  @Patch(':id/reactivate')
+  @Roles(UserType.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Reactivate user account (Admin only)' })
+  async reactivateUser(
+    @Param('id') id: string,
+    @Body() reactivateDto: ReactivateUserDto,
+    @CurrentUser() adminUser: AuthUser,
+  ) {
+    // Create activateDto with isActive: true
+    const activateDto: ActivateUserDto = {
+      isActive: true,
+      reason: reactivateDto.reason,
+    };
+
+    return this.usersService.activateUser(id, activateDto, adminUser.id);
+  }
+
   private getMissingDonorFields(donor: any): string[] {
     const missing: string[] = [];
     const requiredFields = ['country', 'preferredCurrency', 'communicationPreferences', 'receiptPreference'];
@@ -382,63 +438,4 @@ async getIncompleteProfiles(@Query('userType') userType?: UserType) {
   const percentage = Math.round((completedFields / totalFields) * 100);
   return Math.max(0, Math.min(100, percentage));
   }
-
-  //USER ACTIVATION ENDPOINT (Admin only)
-  @Patch(':id/activate')
-  @Roles(UserType.ADMIN)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Activate/deactivate user account (Admin only)' })
-  async activateUser(
-    @Param('id') id: string,
-    @Body() activateDto: ActivateUserDto,
-    @CurrentUser() adminUser: AuthUser, // Use CurrentUser decorator
-  ) {
-    // Pass admin ID from current user
-    return this.usersService.activateUser(id, activateDto, adminUser.id);
-  }
-
-  //USER DESACTIVATION ENDPOINT (Admin only)
-  @Patch(':id/deactivate')
-  @Roles(UserType.ADMIN)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Deactivate user account (Admin only)' })
-  async deactivateUser(
-    @Param('id') id: string,
-    @Body() deactivateDto: DeactivateUserDto,
-    @CurrentUser() adminUser: AuthUser,
-  ) {
-    // Create activateDto with isActive: false
-    const activateDto: ActivateUserDto = {
-      isActive: false,
-      reason: deactivateDto.reason,
-    };
-
-    return this.usersService.activateUser(id, activateDto, adminUser.id);
-  }
-
-  @Patch(':id/reactivate')
-  @Roles(UserType.ADMIN)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Reactivate user account (Admin only)' })
-  async reactivateUser(
-    @Param('id') id: string,
-    @Body() reactivateDto: ReactivateUserDto,
-    @CurrentUser() adminUser: AuthUser,
-  ) {
-    // Create activateDto with isActive: true
-    const activateDto: ActivateUserDto = {
-      isActive: true,
-      reason: reactivateDto.reason,
-    };
-
-    return this.usersService.activateUser(id, activateDto, adminUser.id);
-  }
-  // GET USER STATUS ENDPOINT
-  @Get(':id/status')
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get user account status' })
-  async getUserStatus(@Param('id') id: string) {
-    return this.usersService.getUserStatus(id);
-  }
-
 }

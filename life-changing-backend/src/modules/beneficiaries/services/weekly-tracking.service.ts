@@ -78,9 +78,8 @@ export class WeeklyTrackingService extends BaseService<WeeklyTracking> {
       isOfflineSync: createTrackingDto.isOfflineSync || false,
       syncSessionId: createTrackingDto.syncSessionId,
       offlineData: createTrackingDto.offlineData,
-      submittedAt: new Date(),
     });
-
+ 
     return await this.weeklyTrackingRepository.save(tracking);
   }
 

@@ -82,7 +82,7 @@ export class DatabaseConfig implements TypeOrmOptionsFactory {
       poolSize: 10,
       extra: {
         max: 20,
-        connectionTimeoutMillis: 5000,
+        connectionTimeoutMillis: 10000,
         idleTimeoutMillis: 30000,
       },
     };

@@ -1,4 +1,3 @@
-// src/modules/donations/controllers/donors.controller.ts
 import {
     Controller,
     Get,
@@ -34,6 +33,7 @@ import { Donor } from '../entities/donor.entity';
 export class DonorsController {
     constructor(private readonly donorsService: DonorsService) { }
 
+    // ================= PROFILE ROUTES (SPECIFIC) FIRST =================
     @Post('profile')
     @Roles(UserType.DONOR)
     @ApiBearerAuth()
@@ -70,69 +70,6 @@ export class DonorsController {
             throw new NotFoundException('Donor profile not found');
         }
         return this.donorsService.updateDonor(donor.id, updateDonorDto);
-    }
-
-    @Get()
-    @Roles(UserType.ADMIN)
-    @ApiBearerAuth()
-    @ApiOperation({ summary: 'Get all donors (admin only)' })
-    @ApiQuery({ name: 'page', required: false })
-    @ApiQuery({ name: 'limit', required: false })
-    @ApiQuery({ name: 'sortBy', required: false })
-    @ApiQuery({ name: 'sortOrder', required: false })
-    async getAllDonors(@Query() paginationParams: PaginationParams) {
-        return this.donorsService.paginate(paginationParams, {}, ['user']);
-    }
-
-    @Get('country/:country')
-    @Roles(UserType.ADMIN)
-    @ApiBearerAuth()
-    @ApiOperation({ summary: 'Get donors by country' })
-    async getDonorsByCountry(
-        @Param('country') country: string,
-        @Query() paginationParams: PaginationParams,
-    ) {
-        return this.donorsService.getDonorsByCountry(country, paginationParams);
-    }
-
-    @Get('top')
-    @ApiOperation({ summary: 'Get top donors (public)' })
-    @ApiQuery({ name: 'limit', required: false, type: Number })
-    async getTopDonors(@Query('limit') limit?: number) {
-        return this.donorsService.getTopDonors(limit);
-    }
-
-    @Get('search')
-    @Roles(UserType.ADMIN)
-    @ApiBearerAuth()
-    @ApiOperation({ summary: 'Search donors' })
-    async searchDonors(
-        @Query('q') query: string,
-        @Query() paginationParams: PaginationParams,
-    ) {
-        return this.donorsService.searchDonors(query, paginationParams);
-    }
-
-    @Get('stats')
-    @Roles(UserType.ADMIN)
-    @ApiBearerAuth()
-    @ApiOperation({ summary: 'Get donor statistics (admin only)' })
-    @ApiResponse({
-        status: 200,
-        description: 'Donor statistics returned',
-        type: DonorStatsDto
-    })
-    async getDonorStats(): Promise<DonorStatsDto> {
-        return this.donorsService.getDonorStats();
-    }
-
-    @Delete(':id')
-    @Roles(UserType.ADMIN)
-    @HttpCode(HttpStatus.NO_CONTENT)
-    @ApiBearerAuth()
-    @ApiOperation({ summary: 'Delete donor (admin only)' })
-    async deleteDonor(@Param('id') id: string) {
-        await this.donorsService.delete(id);
     }
 
     @Get('profile/status')
@@ -172,6 +109,74 @@ export class DonorsController {
             missingFields,
             profile: donor
         };
+    }
+
+    // ================= PUBLIC ROUTE =================
+    @Get('top')
+    @ApiOperation({ summary: 'Get top donors (public)' })
+    @ApiQuery({ name: 'limit', required: false, type: Number })
+    async getTopDonors(@Query('limit') limit?: number) {
+        return this.donorsService.getTopDonors(limit);
+    }
+
+    // ================= ADMIN SPECIFIC ROUTES =================
+    @Get('search')
+    @Roles(UserType.ADMIN)
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Search donors' })
+    async searchDonors(
+        @Query('q') query: string,
+        @Query() paginationParams: PaginationParams,
+    ) {
+        return this.donorsService.searchDonors(query, paginationParams);
+    }
+
+    @Get('stats')
+    @Roles(UserType.ADMIN)
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Get donor statistics (admin only)' })
+    @ApiResponse({
+        status: 200,
+        description: 'Donor statistics returned',
+        type: DonorStatsDto
+    })
+    async getDonorStats(): Promise<DonorStatsDto> {
+        return this.donorsService.getDonorStats();
+    }
+
+    // ================= ADMIN FILTER ROUTES =================
+    @Get('country/:country')
+    @Roles(UserType.ADMIN)
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Get donors by country' })
+    async getDonorsByCountry(
+        @Param('country') country: string,
+        @Query() paginationParams: PaginationParams,
+    ) {
+        return this.donorsService.getDonorsByCountry(country, paginationParams);
+    }
+
+    // ================= ADMIN COLLECTION ROUTE =================
+    @Get()
+    @Roles(UserType.ADMIN)
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Get all donors (admin only)' })
+    @ApiQuery({ name: 'page', required: false })
+    @ApiQuery({ name: 'limit', required: false })
+    @ApiQuery({ name: 'sortBy', required: false })
+    @ApiQuery({ name: 'sortOrder', required: false })
+    async getAllDonors(@Query() paginationParams: PaginationParams) {
+        return this.donorsService.paginate(paginationParams, {}, ['user']);
+    }
+
+    // ================= PARAM ROUTES LAST =================
+    @Delete(':id')
+    @Roles(UserType.ADMIN)
+    @HttpCode(HttpStatus.NO_CONTENT)
+    @ApiBearerAuth()
+    @ApiOperation({ summary: 'Delete donor (admin only)' })
+    async deleteDonor(@Param('id') id: string) {
+        await this.donorsService.delete(id);
     }
 
     private getMissingDonorFields(donor: Donor): string[] {

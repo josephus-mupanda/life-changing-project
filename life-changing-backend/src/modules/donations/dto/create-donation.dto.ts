@@ -1,6 +1,6 @@
 // src/modules/donations/dto/create-donation.dto.ts
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsNumber, IsString, IsEnum, IsOptional, IsBoolean, IsUUID, Min } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsString, IsEnum, IsOptional, IsBoolean, IsUUID, Min, ValidateIf } from 'class-validator';
 import { DonationType, PaymentMethod, Currency } from '../../../config/constants';
 
 export class CreateDonationDto {
@@ -15,7 +15,7 @@ export class CreateDonationDto {
   @IsEnum(Currency)
   currency: Currency;
 
-  @ApiProperty({ enum: DonationType, description: 'Type of donation' })
+  @ApiProperty({ enum: DonationType, description: 'Type of donation' , example: DonationType.ONE_TIME})
   @IsNotEmpty()
   @IsEnum(DonationType)
   donationType: DonationType;
@@ -30,7 +30,7 @@ export class CreateDonationDto {
   @IsUUID()
   programId?: string;
 
-  @ApiProperty({ enum: PaymentMethod, description: 'Payment method' })
+  @ApiProperty({ enum: PaymentMethod, description: 'Payment method' , example: PaymentMethod.CARD})
   @IsNotEmpty()
   @IsEnum(PaymentMethod)
   paymentMethod: PaymentMethod;
@@ -45,10 +45,19 @@ export class CreateDonationDto {
   @IsBoolean()
   isAnonymous?: boolean;
 
-  @ApiProperty({ description: 'Payment method ID (from payment gateway)' })
-  @IsNotEmpty()
+  // For Stripe (Card) payments
+  @ApiProperty({ required: false, description: 'Payment method ID from Stripe (required for card payments)' })
+  @ValidateIf(o => o.paymentMethod === PaymentMethod.CARD)
+  @IsNotEmpty({ message: 'Payment method ID is required for card payments' })
   @IsString()
-  paymentMethodId: string;
+  paymentMethodId?: string;
+
+  // For Paypack (Mobile Money) payments
+  @ApiProperty({ required: false, description: 'Phone number for mobile money (required for MTN/Airtel payments)' })
+  @ValidateIf(o => o.paymentMethod === PaymentMethod.MTN_MOBILE_MONEY || o.paymentMethod === PaymentMethod.AIRTEL_MONEY)
+  @IsNotEmpty({ message: 'Phone number is required for mobile money payments' })
+  @IsString()
+  phoneNumber?: string;
 }
 
 export class ProcessDonationDto extends CreateDonationDto {

@@ -3,12 +3,23 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Loader2, Search, Filter, Download, Eye, DollarSign } from 'lucide-react';
+import { 
+  Loader2, 
+  Search, 
+  Filter, 
+  Download, 
+  Eye, 
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight 
+} from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { adminService } from '@/services/admin.service';
-import { Donation, DonationType, PaymentStatus, Currency } from '@/lib/types';
+import { Donation, PaymentStatus } from '@/lib/types';
 import { toast } from 'sonner';
+import { donationService } from '@/services/donation.service';
 
 export default function DonationsPage() {
     const [donations, setDonations] = useState<Donation[]>([]);
@@ -16,49 +27,118 @@ export default function DonationsPage() {
     const [search, setSearch] = useState('');
     const [filterStatus, setFilterStatus] = useState<string>('all');
     const [page, setPage] = useState(1);
-    const [total, setTotal] = useState(0);
+    const itemsPerPage = 10;
 
     useEffect(() => {
         fetchDonations();
-    }, [page, search, filterStatus]);
+    }, [filterStatus]); // Refetch when filter changes
 
     const fetchDonations = async () => {
         setLoading(true);
         try {
-            // Note: Assuming API supports status filter in search or separate param
-            // For now, just passing search. If backend supports 'status', add it to params.
-            const response = await adminService.getDonations(page, 10, search);
-            // If client-side filtering needed for status because API doesn't support it yet:
-            // This is a placeholder as proper filtering typically happens on server.
-
-            let data = Array.isArray(response.data) ? response.data : [];
+            let data: Donation[] = [];
+            
+            // Use the appropriate endpoint based on filter
             if (filterStatus !== 'all') {
-                data = data.filter((d: Donation) => d.paymentStatus === filterStatus);
+                // Use getByStatus from donationService
+                const response = await donationService.getByStatus(filterStatus);
+                data = Array.isArray(response) ? response : [];
+            } else {
+                // Use getAllDonations from adminService
+                const response = await adminService.getDonations();
+                data = response.data || [];
             }
 
+            // Apply client-side search filter
+            if (search) {
+                const searchLower = search.toLowerCase();
+                data = data.filter(donation => {
+                    const donorName = donation.isAnonymous 
+                        ? '' 
+                        : donation.donor?.fullName?.toLowerCase() || 
+                          donation.donor?.user?.fullName?.toLowerCase() || 
+                          '';
+                    
+                    const donorEmail = donation.donor?.user?.email?.toLowerCase() || '';
+                    const transactionId = donation.transactionId?.toLowerCase() || '';
+                    
+                    return donorName.includes(searchLower) || 
+                           donorEmail.includes(searchLower) || 
+                           transactionId.includes(searchLower);
+                });
+            }
+
+            // Sort by date (newest first)
+            data.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
             setDonations(data);
-            setTotal(response.total);
         } catch (error) {
             console.error("Failed to fetch donations", error);
             toast.error("Failed to load donations");
+            setDonations([]);
         } finally {
             setLoading(false);
         }
     };
 
+    // Handle search with debounce
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            if (search !== undefined) {
+                fetchDonations();
+            }
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [search]);
+
     const getStatusBadge = (status: PaymentStatus) => {
         switch (status) {
             case PaymentStatus.COMPLETED:
-                return <Badge className="bg-green-100 text-green-700">Completed</Badge>;
+                return <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Completed</Badge>;
             case PaymentStatus.PENDING:
-                return <Badge className="bg-yellow-100 text-yellow-700">Pending</Badge>;
+                return <Badge className="bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">Pending</Badge>;
             case PaymentStatus.FAILED:
-                return <Badge className="bg-red-100 text-red-700">Failed</Badge>;
+                return <Badge className="bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">Failed</Badge>;
             case PaymentStatus.REFUNDED:
-                return <Badge className="bg-gray-100 text-gray-700">Refunded</Badge>;
+                return <Badge className="bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400">Refunded</Badge>;
             default:
                 return <Badge variant="outline">{status}</Badge>;
         }
+    };
+
+    // Pagination
+    const totalPages = Math.ceil(donations.length / itemsPerPage);
+    const startIndex = (page - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const currentDonations = donations.slice(startIndex, endIndex);
+
+    const handlePageChange = (newPage: number) => {
+        setPage(newPage);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleStatusChange = (value: string) => {
+        setFilterStatus(value);
+        setPage(1); // Reset to first page
+    };
+
+    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setSearch(e.target.value);
+        setPage(1); // Reset to first page on search
+    };
+
+    const getDonorName = (donation: Donation) => {
+        if (donation.isAnonymous) return 'Anonymous';
+        if (donation.donor?.fullName) return donation.donor.fullName;
+        if (donation.donor?.user?.fullName) return donation.donor.user.fullName;
+        return 'Unknown Donor';
+    };
+
+    const getDonorEmail = (donation: Donation) => {
+        if (donation.isAnonymous) return null;
+        if (donation.donor?.user?.email) return donation.donor.user.email;
+        return null;
     };
 
     return (
@@ -70,7 +150,7 @@ export default function DonationsPage() {
                     <p className="text-muted-foreground">Manage and track all donations</p>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline">
+                    <Button variant="outline" onClick={fetchDonations}>
                         <Download className="mr-2 h-4 w-4" />
                         Export
                     </Button>
@@ -87,11 +167,11 @@ export default function DonationsPage() {
                                 placeholder="Search by donor name, email or transaction ID..."
                                 className="pl-9"
                                 value={search}
-                                onChange={(e) => setSearch(e.target.value)}
+                                onChange={handleSearchChange}
                             />
                         </div>
                         <div className="w-full md:w-[200px]">
-                            <Select value={filterStatus} onValueChange={setFilterStatus}>
+                            <Select value={filterStatus} onValueChange={handleStatusChange}>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Status" />
                                 </SelectTrigger>
@@ -100,6 +180,7 @@ export default function DonationsPage() {
                                     <SelectItem value={PaymentStatus.COMPLETED}>Completed</SelectItem>
                                     <SelectItem value={PaymentStatus.PENDING}>Pending</SelectItem>
                                     <SelectItem value={PaymentStatus.FAILED}>Failed</SelectItem>
+                                    <SelectItem value={PaymentStatus.REFUNDED}>Refunded</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -110,9 +191,9 @@ export default function DonationsPage() {
             {/* Donations Table */}
             <Card>
                 <CardHeader>
-                    <CardTitle>Recent Donations</CardTitle>
+                    <CardTitle>Donations</CardTitle>
                     <CardDescription>
-                        Showing {donations.length} of {total} transactions
+                        Showing {currentDonations.length} of {donations.length} transactions
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -125,62 +206,110 @@ export default function DonationsPage() {
                             No donations found matching your criteria.
                         </div>
                     ) : (
-                        <div className="overflow-x-auto">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Date</TableHead>
-                                        <TableHead>Donor</TableHead>
-                                        <TableHead>Amount</TableHead>
-                                        <TableHead>Type</TableHead>
-                                        <TableHead>Method</TableHead>
-                                        <TableHead>Status</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {donations.map((donation) => (
-                                        <TableRow key={donation.id}>
-                                            <TableCell>
-                                                {new Date(donation.createdAt).toLocaleDateString()}
-                                                <div className="text-xs text-muted-foreground">
-                                                    {new Date(donation.createdAt).toLocaleTimeString()}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                {donation.isAnonymous ? (
-                                                    <span className="italic text-muted-foreground">Anonymous</span>
-                                                ) : (
-                                                    <div className="font-medium">{donation.donor?.fullName || 'Unknown Donor'}</div>
-                                                )}
-                                                <div className="text-xs text-muted-foreground">{donation.donor?.user?.email}</div>
-                                            </TableCell>
-                                            <TableCell className="font-bold">
-                                                {donation.amount.toLocaleString()} <span className="text-xs font-normal text-muted-foreground">{donation.currency}</span>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge variant="outline" className="capitalize">{donation.donationType?.replace('_', ' ')}</Badge>
-                                            </TableCell>
-                                            <TableCell className="capitalize">
-                                                {donation.paymentMethod?.replace('_', ' ')}
-                                            </TableCell>
-                                            <TableCell>
-                                                {getStatusBadge(donation.paymentStatus)}
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <Button variant="ghost" size="icon">
-                                                    <Eye className="h-4 w-4" />
-                                                </Button>
-                                            </TableCell>
+                        <>
+                            <div className="overflow-x-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>Date</TableHead>
+                                            <TableHead>Donor</TableHead>
+                                            <TableHead>Amount</TableHead>
+                                            <TableHead>Type</TableHead>
+                                            <TableHead>Method</TableHead>
+                                            <TableHead>Status</TableHead>
+                                            <TableHead className="text-right">Actions</TableHead>
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </div>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {currentDonations.map((donation) => (
+                                            <TableRow key={donation.id}>
+                                                <TableCell>
+                                                    {new Date(donation.createdAt).toLocaleDateString()}
+                                                    <div className="text-xs text-muted-foreground">
+                                                        {new Date(donation.createdAt).toLocaleTimeString()}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    {donation.isAnonymous ? (
+                                                        <span className="italic text-muted-foreground">Anonymous</span>
+                                                    ) : (
+                                                        <>
+                                                            <div className="font-medium">{getDonorName(donation)}</div>
+                                                            {getDonorEmail(donation) && (
+                                                                <div className="text-xs text-muted-foreground">{getDonorEmail(donation)}</div>
+                                                            )}
+                                                        </>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="font-bold">
+                                                    {Number(donation.amount).toLocaleString()} <span className="text-xs font-normal text-muted-foreground">{donation.currency}</span>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge variant="outline" className="capitalize">
+                                                        {donation.donationType?.replace('_', ' ')}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="capitalize">
+                                                    {donation.paymentMethod?.replace('_', ' ')}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {getStatusBadge(donation.paymentStatus)}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button variant="ghost" size="icon">
+                                                        <Eye className="h-4 w-4" />
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+
+                            {/* Pagination */}
+                            {totalPages > 1 && (
+                                <div className="flex items-center justify-between space-x-2 py-4">
+                                    <div className="text-sm text-muted-foreground">
+                                        Page {page} of {totalPages}
+                                    </div>
+                                    <div className="flex space-x-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => handlePageChange(1)}
+                                            disabled={page === 1}
+                                        >
+                                            <ChevronsLeft className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => handlePageChange(page - 1)}
+                                            disabled={page === 1}
+                                        >
+                                            <ChevronLeft className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => handlePageChange(page + 1)}
+                                            disabled={page === totalPages}
+                                        >
+                                            <ChevronRight className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => handlePageChange(totalPages)}
+                                            disabled={page === totalPages}
+                                        >
+                                            <ChevronsRight className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+                        </>
                     )}
-
-                    {/* Pagination Controls could go here */}
-
                 </CardContent>
             </Card>
         </div>

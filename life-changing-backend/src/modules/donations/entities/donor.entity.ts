@@ -47,6 +47,9 @@ export class Donor {
   })
   receiptPreference: ReceiptPreference;
 
+  @Column({ name: 'stripe_customer_id', nullable: true })
+  stripeCustomerId: string;
+
   @Column({ name: 'total_donated', type: 'decimal', precision: 12, scale: 2, default: 0 })
   totalDonated: number;
 

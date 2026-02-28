@@ -1,4 +1,5 @@
-﻿import { useEffect, useState } from 'react';
+﻿// pages/beneficiary/GoalsPage.tsx
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   DollarSign,
@@ -22,15 +23,25 @@ import {
   Sparkles,
   BookOpen,
   ListChecks,
-  FileText
+  FileText,
+  Rocket,
+  Zap,
+  X,
+  HelpCircle,
+  Save,
+  ArrowLeft
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { beneficiaryService } from '@/services/beneficiary.service';
-import { BusinessGoal, GoalType, GoalStatus } from '@/lib/types';
+import { BusinessGoal, GoalType, GoalStatus, CreateGoalDto } from '@/lib/types';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -69,12 +80,86 @@ const staggerContainer = {
   }
 };
 
+// Goal type configurations
+const goalTypeConfig = {
+  [GoalType.FINANCIAL]: {
+    icon: DollarSign,
+    color: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400',
+    border: 'border-emerald-200 dark:border-emerald-800',
+    label: 'Financial',
+    description: 'Save money, invest, or reach financial targets',
+    gradient: 'from-emerald-500/10 to-teal-500/10'
+  },
+  [GoalType.BUSINESS]: {
+    icon: Briefcase,
+    color: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
+    border: 'border-blue-200 dark:border-blue-800',
+    label: 'Business',
+    description: 'Grow your business, increase revenue, expand',
+    gradient: 'from-blue-500/10 to-cyan-500/10'
+  },
+  [GoalType.EDUCATION]: {
+    icon: GraduationCap,
+    color: 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400',
+    border: 'border-purple-200 dark:border-purple-800',
+    label: 'Education',
+    description: 'Learn new skills, complete courses, get certified',
+    gradient: 'from-purple-500/10 to-pink-500/10'
+  },
+  [GoalType.PERSONAL]: {
+    icon: User,
+    color: 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400',
+    border: 'border-amber-200 dark:border-amber-800',
+    label: 'Personal',
+    description: 'Health, wellness, family, or personal growth',
+    gradient: 'from-amber-500/10 to-orange-500/10'
+  },
+  [GoalType.SKILLS]: {
+    icon: Lightbulb,
+    color: 'bg-pink-100 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400',
+    border: 'border-pink-200 dark:border-pink-800',
+    label: 'Skills',
+    description: 'Develop new abilities, master a craft',
+    gradient: 'from-pink-500/10 to-rose-500/10'
+  }
+};
+
+interface MilestoneInput {
+  description: string;
+  targetAmount: string;
+  targetDate: string;
+}
+
 export default function GoalsPage() {
   const navigate = useNavigate();
   const [goals, setGoals] = useState<BusinessGoal[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedGoal, setSelectedGoal] = useState<BusinessGoal | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isGoalDialogOpen, setIsGoalDialogOpen] = useState(false);
+  const [editingGoal, setEditingGoal] = useState<BusinessGoal | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [activeTab, setActiveTab] = useState('details');
+  const [completion, setCompletion] = useState(0);
+
+  // Milestones
+  const [milestones, setMilestones] = useState<MilestoneInput[]>([
+    { description: '', targetAmount: '', targetDate: '' }
+  ]);
+
+  // Action Plan
+  const [actionPlanSteps, setActionPlanSteps] = useState<string[]>(['']);
+  const [resourcesNeeded, setResourcesNeeded] = useState<string[]>(['']);
+
+  // Form Data
+  const [formData, setFormData] = useState({
+    description: '',
+    type: '',
+    targetAmount: '',
+    targetDate: '',
+    notes: '',
+    timeline: ''
+  });
 
   useEffect(() => {
     fetchGoals();
@@ -83,17 +168,11 @@ export default function GoalsPage() {
   const fetchGoals = async () => {
     try {
       setLoading(true);
-
-      // Get response from service
       const response = await beneficiaryService.getGoals();
-
-      // ✅ ROBUST EXTRACTION PATTERN
       const responseData = response as any;
       const goalsData = responseData.data?.data || responseData.data || responseData;
       const goalsList: BusinessGoal[] = Array.isArray(goalsData) ? goalsData : [];
-
       setGoals(goalsList);
-
     } catch (error: any) {
       console.error("Failed to load goals", error);
       toast.error("Failed to load goals. Please try again.");
@@ -101,6 +180,205 @@ export default function GoalsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Reset form to initial state
+  const resetForm = () => {
+    setFormData({
+      description: '',
+      type: '',
+      targetAmount: '',
+      targetDate: '',
+      notes: '',
+      timeline: ''
+    });
+    setMilestones([{ description: '', targetAmount: '', targetDate: '' }]);
+    setActionPlanSteps(['']);
+    setResourcesNeeded(['']);
+    setEditingGoal(null);
+    setActiveTab('details');
+    setCompletion(0);
+  };
+
+  // Load goal data for editing
+  const openEditDialog = (goal: BusinessGoal) => {
+    setEditingGoal(goal);
+    
+    // Set form data from goal
+    setFormData({
+      description: goal.description || '',
+      type: goal.type || '',
+      targetAmount: goal.targetAmount?.toString() || '',
+      targetDate: goal.targetDate ? new Date(goal.targetDate).toISOString().split('T')[0] : '',
+      notes: goal.notes || '',
+      timeline: goal.actionPlan?.timeline || ''
+    });
+
+    // Set milestones
+    if (goal.milestones && goal.milestones.length > 0) {
+      setMilestones(goal.milestones.map(m => ({
+        description: m.description || '',
+        targetAmount: m.targetAmount?.toString() || '',
+        targetDate: m.targetDate ? new Date(m.targetDate).toISOString().split('T')[0] : ''
+      })));
+    } else {
+      setMilestones([{ description: '', targetAmount: '', targetDate: '' }]);
+    }
+
+    // Set action plan
+    if (goal.actionPlan) {
+      setActionPlanSteps(goal.actionPlan.steps || ['']);
+      setResourcesNeeded(goal.actionPlan.resourcesNeeded || ['']);
+    } else {
+      setActionPlanSteps(['']);
+      setResourcesNeeded(['']);
+    }
+
+    setIsGoalDialogOpen(true);
+  };
+
+  // Calculate completion percentage
+  const calculateCompletion = () => {
+    let completed = 0;
+    let total = 5; // Base fields
+
+    if (formData.description) completed++;
+    if (formData.type) completed++;
+    if (formData.targetAmount) completed++;
+    if (formData.targetDate) completed++;
+
+    // Milestones (at least one valid)
+    const hasValidMilestone = milestones.some(m => m.description && m.targetAmount && m.targetDate);
+    if (hasValidMilestone) completed++;
+
+    // Optional fields bonus
+    if (formData.notes) completed = Math.min(completed + 0.5, total);
+    if (formData.timeline) completed = Math.min(completed + 0.5, total);
+    if (actionPlanSteps.some(s => s)) completed = Math.min(completed + 0.5, total);
+    if (resourcesNeeded.some(r => r)) completed = Math.min(completed + 0.5, total);
+
+    setCompletion(Math.round((completed / total) * 100));
+  };
+
+  // Update completion on form changes
+  useEffect(() => {
+    calculateCompletion();
+  }, [formData, milestones, actionPlanSteps, resourcesNeeded]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!formData.description || !formData.type || !formData.targetAmount || !formData.targetDate) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      // Filter out empty milestones
+      const validMilestones = milestones
+        .filter(m => m.description.trim() !== '' && m.targetAmount && m.targetDate)
+        .map(m => ({
+          description: m.description,
+          targetAmount: Number(m.targetAmount),
+          targetDate: m.targetDate
+        }));
+
+      // Filter out empty steps and resources
+      const validSteps = actionPlanSteps.filter(s => s.trim() !== '');
+      const validResources = resourcesNeeded.filter(r => r.trim() !== '');
+
+      // Construct DTO matching your API
+      const payload: CreateGoalDto = {
+        description: formData.description,
+        type: formData.type as GoalType,
+        targetAmount: Number(formData.targetAmount),
+        targetDate: formData.targetDate,
+        ...(formData.notes && { notes: formData.notes }),
+        ...(validMilestones.length > 0 && { milestones: validMilestones }),
+        ...((validSteps.length > 0 && validResources.length > 0 && formData.timeline) && {
+          actionPlan: {
+            steps: validSteps,
+            resourcesNeeded: validResources,
+            timeline: formData.timeline
+          }
+        })
+      };
+
+      if (editingGoal) {
+        // Update existing goal
+        await beneficiaryService.updateGoal(editingGoal.id, payload);
+        toast.success('Goal updated successfully!', {
+          description: 'Your goal has been updated.',
+          icon: <Rocket className="w-5 h-5 text-teal-600" />
+        });
+      } else {
+        // Create new goal
+        await beneficiaryService.createGoal(payload);
+        toast.success('Goal created successfully!', {
+          description: 'Your new goal has been set. Start working towards it!',
+          icon: <Rocket className="w-5 h-5 text-teal-600" />
+        });
+      }
+      
+      setIsGoalDialogOpen(false);
+      resetForm();
+      fetchGoals();
+    } catch (error) {
+      console.error("Failed to save goal", error);
+      toast.error(editingGoal ? "Failed to update goal" : "Failed to create goal");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Milestone handlers
+  const addMilestone = () => {
+    setMilestones([...milestones, { description: '', targetAmount: '', targetDate: '' }]);
+  };
+
+  const updateMilestone = (index: number, field: keyof MilestoneInput, value: string) => {
+    const newMilestones = [...milestones];
+    newMilestones[index][field] = value;
+    setMilestones(newMilestones);
+  };
+
+  const removeMilestone = (index: number) => {
+    const newMilestones = milestones.filter((_, i) => i !== index);
+    setMilestones(newMilestones.length === 0 ? [{ description: '', targetAmount: '', targetDate: '' }] : newMilestones);
+  };
+
+  // Array handlers
+  const addArrayItem = (
+    items: string[],
+    setItems: React.Dispatch<React.SetStateAction<string[]>>
+  ) => {
+    setItems([...items, '']);
+  };
+
+  const updateArrayItem = (
+    index: number,
+    value: string,
+    items: string[],
+    setItems: React.Dispatch<React.SetStateAction<string[]>>
+  ) => {
+    const newItems = [...items];
+    newItems[index] = value;
+    setItems(newItems);
+  };
+
+  const removeArrayItem = (
+    index: number,
+    items: string[],
+    setItems: React.Dispatch<React.SetStateAction<string[]>>
+  ) => {
+    const newItems = items.filter((_, i) => i !== index);
+    setItems(newItems.length === 0 ? [''] : newItems);
   };
 
   const getGoalIcon = (type: GoalType) => {
@@ -193,6 +471,10 @@ export default function GoalsPage() {
       : 0
   };
 
+  // Get selected goal type config for dialog
+  const selectedType = formData.type as GoalType;
+  const TypeIcon = selectedType ? goalTypeConfig[selectedType]?.icon : Target;
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50">
@@ -239,7 +521,10 @@ export default function GoalsPage() {
 
             <Button
               className="h-9 sm:h-10 px-4 sm:px-5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs sm:text-sm font-medium shadow-lg shadow-teal-600/20 transition-all active:scale-95"
-              onClick={() => navigate('/beneficiary/goals/add')}
+              onClick={() => {
+                resetForm();
+                setIsGoalDialogOpen(true);
+              }}
             >
               <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1.5 sm:mr-2" />
               Create New Goal
@@ -334,7 +619,10 @@ export default function GoalsPage() {
               {/* All Goals Tab */}
               <TabsContent value="all" className="mt-6">
                 {!Array.isArray(goals) || goals.length === 0 ? (
-                  <EmptyState onAdd={() => navigate('/beneficiary/goals/add')} />
+                  <EmptyState onAdd={() => {
+                    resetForm();
+                    setIsGoalDialogOpen(true);
+                  }} />
                 ) : (
                   <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                     <AnimatePresence mode="popLayout">
@@ -346,7 +634,7 @@ export default function GoalsPage() {
                             setSelectedGoal(goal);
                             setIsDetailsOpen(true);
                           }}
-                          onEdit={() => navigate(`/beneficiary/goals/${goal.id}/edit`)}
+                          onEdit={() => openEditDialog(goal)}
                         />
                       ))}
                     </AnimatePresence>
@@ -357,7 +645,10 @@ export default function GoalsPage() {
               {/* In Progress Tab */}
               <TabsContent value="in-progress" className="mt-6">
                 {!Array.isArray(groupedGoals[GoalStatus.IN_PROGRESS]) || groupedGoals[GoalStatus.IN_PROGRESS].length === 0 ? (
-                  <EmptyState onAdd={() => navigate('/beneficiary/goals/add')} message="No goals in progress" />
+                  <EmptyState onAdd={() => {
+                    resetForm();
+                    setIsGoalDialogOpen(true);
+                  }} message="No goals in progress" />
                 ) : (
                   <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                     {groupedGoals[GoalStatus.IN_PROGRESS].map((goal) => (
@@ -368,7 +659,7 @@ export default function GoalsPage() {
                           setSelectedGoal(goal);
                           setIsDetailsOpen(true);
                         }}
-                        onEdit={() => navigate(`/beneficiary/goals/${goal.id}/edit`)}
+                        onEdit={() => openEditDialog(goal)}
                       />
                     ))}
                   </div>
@@ -378,7 +669,10 @@ export default function GoalsPage() {
               {/* Not Started Tab */}
               <TabsContent value="not-started" className="mt-6">
                 {!Array.isArray(groupedGoals[GoalStatus.NOT_STARTED]) || groupedGoals[GoalStatus.NOT_STARTED].length === 0 ? (
-                  <EmptyState onAdd={() => navigate('/beneficiary/goals/add')} message="No pending goals" />
+                  <EmptyState onAdd={() => {
+                    resetForm();
+                    setIsGoalDialogOpen(true);
+                  }} message="No pending goals" />
                 ) : (
                   <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                     {groupedGoals[GoalStatus.NOT_STARTED].map((goal) => (
@@ -389,7 +683,7 @@ export default function GoalsPage() {
                           setSelectedGoal(goal);
                           setIsDetailsOpen(true);
                         }}
-                        onEdit={() => navigate(`/beneficiary/goals/${goal.id}/edit`)}
+                        onEdit={() => openEditDialog(goal)}
                       />
                     ))}
                   </div>
@@ -399,7 +693,10 @@ export default function GoalsPage() {
               {/* Achieved Tab */}
               <TabsContent value="achieved" className="mt-6">
                 {!Array.isArray(groupedGoals[GoalStatus.ACHIEVED]) || groupedGoals[GoalStatus.ACHIEVED].length === 0 ? (
-                  <EmptyState onAdd={() => navigate('/beneficiary/goals/add')} message="No achieved goals yet" />
+                  <EmptyState onAdd={() => {
+                    resetForm();
+                    setIsGoalDialogOpen(true);
+                  }} message="No achieved goals yet" />
                 ) : (
                   <div className="grid gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
                     {groupedGoals[GoalStatus.ACHIEVED].map((goal) => (
@@ -410,7 +707,7 @@ export default function GoalsPage() {
                           setSelectedGoal(goal);
                           setIsDetailsOpen(true);
                         }}
-                        onEdit={() => navigate(`/beneficiary/goals/${goal.id}/edit`)}
+                        onEdit={() => openEditDialog(goal)}
                       />
                     ))}
                   </div>
@@ -559,6 +856,391 @@ export default function GoalsPage() {
                 </div>
               </>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Create/Edit Goal Dialog */}
+        <Dialog open={isGoalDialogOpen} onOpenChange={(open) => {
+          if (!open) resetForm();
+          setIsGoalDialogOpen(open);
+        }}>
+          <DialogContent className="sm:max-w-[800px] w-[95%] md:w-full p-0">
+            <div className="flex flex-col" style={{ maxHeight: '90vh' }}>
+              {/* Fixed Header */}
+              <div className="px-6 py-4 border-b">
+                <DialogHeader>
+                  <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                    <div className={cn(
+                      "p-2 rounded-lg",
+                      selectedType ? goalTypeConfig[selectedType]?.color : 'bg-teal-100 text-teal-600'
+                    )}>
+                      <TypeIcon className="w-4 h-4" />
+                    </div>
+                    {editingGoal ? 'Edit Goal' : 'Create New Goal'}
+                  </DialogTitle>
+                  <DialogDescription>
+                    {editingGoal ? 'Update your goal details' : 'Set a new target and track your progress'}
+                  </DialogDescription>
+                </DialogHeader>
+              </div>
+
+              {/* Scrollable Content */}
+              <div className="overflow-y-auto flex-1 p-6">
+                <form id="goal-form" onSubmit={handleSubmit} className="space-y-6">
+                  {/* Progress Bar */}
+                  <div className="mb-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs font-medium text-slate-500">Form Completion</span>
+                      <span className="text-xs font-bold text-teal-600">{completion}%</span>
+                    </div>
+                    <Progress value={completion} className="h-1.5" />
+                  </div>
+
+                  {/* Goal Details */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1 h-5 bg-teal-500 rounded-full"></div>
+                      <h3 className="text-xs font-bold uppercase text-slate-400 tracking-wider">
+                        Goal Details
+                      </h3>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="description" className="text-sm font-medium">
+                          Goal Description <span className="text-red-500">*</span>
+                        </Label>
+                        <Textarea
+                          id="description"
+                          placeholder="Describe your goal in detail... e.g., Save 100,000 RWF to buy a sewing machine"
+                          rows={3}
+                          value={formData.description}
+                          onChange={(e) => handleChange('description', e.target.value)}
+                          className="resize-none border-slate-200 focus:border-teal-500 focus:ring-teal-500/20"
+                          required
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="type" className="text-sm font-medium">
+                            Category <span className="text-red-500">*</span>
+                          </Label>
+                          <Select
+                            value={formData.type}
+                            onValueChange={(value) => handleChange('type', value)}
+                            required
+                          >
+                            <SelectTrigger className="border-slate-200">
+                              <SelectValue placeholder="Select type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Object.entries(goalTypeConfig).map(([value, config]) => {
+                                const Icon = config.icon;
+                                return (
+                                  <SelectItem key={value} value={value}>
+                                    <div className="flex items-center gap-2">
+                                      <div className={cn("p-1 rounded", config.color)}>
+                                        <Icon className="w-3 h-3" />
+                                      </div>
+                                      <span>{config.label}</span>
+                                    </div>
+                                  </SelectItem>
+                                );
+                              })}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="targetAmount" className="text-sm font-medium">
+                            Target Amount (RWF) <span className="text-red-500">*</span>
+                          </Label>
+                          <div className="relative">
+                            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                            <Input
+                              id="targetAmount"
+                              type="number"
+                              placeholder="100000"
+                              min="0"
+                              step="1000"
+                              className="pl-9 border-slate-200 focus:border-teal-500 focus:ring-teal-500/20"
+                              value={formData.targetAmount}
+                              onChange={(e) => handleChange('targetAmount', e.target.value)}
+                              required
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="targetDate" className="text-sm font-medium">
+                          Target Date <span className="text-red-500">*</span>
+                        </Label>
+                        <div className="relative">
+                          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                          <Input
+                            id="targetDate"
+                            type="date"
+                            className="pl-9 border-slate-200 focus:border-teal-500 focus:ring-teal-500/20"
+                            value={formData.targetDate}
+                            onChange={(e) => handleChange('targetDate', e.target.value)}
+                            min={new Date().toISOString().split('T')[0]}
+                            required
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Milestones */}
+                  <div className="space-y-4 pt-4 border-t border-slate-100">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1 h-5 bg-amber-500 rounded-full"></div>
+                      <h3 className="text-xs font-bold uppercase text-slate-400 tracking-wider">
+                        Milestones
+                      </h3>
+                    </div>
+
+                    <div className="space-y-4">
+                      <AnimatePresence>
+                        {milestones.map((milestone, index) => (
+                          <motion.div
+                            key={index}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -20 }}
+                            className="p-4 bg-slate-50 rounded-xl border border-slate-200"
+                          >
+                            <div className="flex justify-between items-start mb-3">
+                              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-[10px]">
+                                Milestone {index + 1}
+                              </Badge>
+                              {milestones.length > 1 && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 text-slate-400 hover:text-red-500"
+                                  onClick={() => removeMilestone(index)}
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </Button>
+                              )}
+                            </div>
+
+                            <div className="space-y-3">
+                              <Input
+                                placeholder="Description"
+                                className="h-9 text-sm border-slate-200"
+                                value={milestone.description}
+                                onChange={(e) => updateMilestone(index, 'description', e.target.value)}
+                              />
+                              <div className="grid grid-cols-2 gap-2">
+                                <div className="relative">
+                                  <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400" />
+                                  <Input
+                                    type="number"
+                                    placeholder="Amount"
+                                    className="pl-7 h-9 text-sm border-slate-200"
+                                    value={milestone.targetAmount}
+                                    onChange={(e) => updateMilestone(index, 'targetAmount', e.target.value)}
+                                  />
+                                </div>
+                                <Input
+                                  type="date"
+                                  className="h-9 text-sm border-slate-200"
+                                  value={milestone.targetDate}
+                                  onChange={(e) => updateMilestone(index, 'targetDate', e.target.value)}
+                                />
+                              </div>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full border-dashed border-slate-300 hover:border-teal-500 hover:bg-teal-50 transition-all"
+                        onClick={addMilestone}
+                      >
+                        <Plus className="w-4 h-4 mr-2" /> Add Milestone
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Action Plan */}
+                  <div className="space-y-4 pt-4 border-t border-slate-100">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1 h-5 bg-indigo-500 rounded-full"></div>
+                      <h3 className="text-xs font-bold uppercase text-slate-400 tracking-wider">
+                        Action Plan
+                      </h3>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="space-y-3">
+                        <Label className="text-sm font-medium">Action Steps</Label>
+                        <AnimatePresence>
+                          {actionPlanSteps.map((step, index) => (
+                            <motion.div
+                              key={index}
+                              initial={{ opacity: 0, x: -20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              exit={{ opacity: 0, x: 20 }}
+                              className="flex gap-2"
+                            >
+                              <div className="flex-1 relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-medium text-slate-400">
+                                  {index + 1}.
+                                </span>
+                                <Input
+                                  placeholder={`Step ${index + 1}`}
+                                  value={step}
+                                  onChange={(e) => updateArrayItem(index, e.target.value, actionPlanSteps, setActionPlanSteps)}
+                                  className="pl-8 border-slate-200"
+                                />
+                              </div>
+                              {actionPlanSteps.length > 1 && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-10 w-10 text-slate-400 hover:text-red-500 hover:bg-red-50"
+                                  onClick={() => removeArrayItem(index, actionPlanSteps, setActionPlanSteps)}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              )}
+                            </motion.div>
+                          ))}
+                        </AnimatePresence>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => addArrayItem(actionPlanSteps, setActionPlanSteps)}
+                          className="border-dashed border-slate-300 w-full"
+                        >
+                          <Plus className="w-3.5 h-3.5 mr-2" /> Add Step
+                        </Button>
+                      </div>
+
+                      <div className="space-y-3">
+                        <Label className="text-sm font-medium">Resources Needed</Label>
+                        <AnimatePresence>
+                          {resourcesNeeded.map((resource, index) => (
+                            <motion.div
+                              key={index}
+                              initial={{ opacity: 0, x: -20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              exit={{ opacity: 0, x: 20 }}
+                              className="flex gap-2"
+                            >
+                              <Input
+                                placeholder={`Resource ${index + 1}`}
+                                value={resource}
+                                onChange={(e) => updateArrayItem(index, e.target.value, resourcesNeeded, setResourcesNeeded)}
+                                className="border-slate-200"
+                              />
+                              {resourcesNeeded.length > 1 && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-10 w-10 text-slate-400 hover:text-red-500 hover:bg-red-50"
+                                  onClick={() => removeArrayItem(index, resourcesNeeded, setResourcesNeeded)}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              )}
+                            </motion.div>
+                          ))}
+                        </AnimatePresence>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => addArrayItem(resourcesNeeded, setResourcesNeeded)}
+                          className="border-dashed border-slate-300 w-full"
+                        >
+                          <Plus className="w-3.5 h-3.5 mr-2" /> Add Resource
+                        </Button>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="timeline" className="text-sm font-medium">
+                          Timeline Overview
+                        </Label>
+                        <Input
+                          id="timeline"
+                          value={formData.timeline}
+                          onChange={(e) => handleChange('timeline', e.target.value)}
+                          placeholder="e.g., 5 months, 12 weeks, etc."
+                          className="border-slate-200"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Additional Notes */}
+                  <div className="space-y-4 pt-4 border-t border-slate-100">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1 h-5 bg-purple-500 rounded-full"></div>
+                      <h3 className="text-xs font-bold uppercase text-slate-400 tracking-wider">
+                        Additional Notes
+                      </h3>
+                    </div>
+
+                    <Textarea
+                      placeholder="e.g., Will save 5,000 RWF per week from business profits..."
+                      className="min-h-[80px] border-slate-200 resize-none"
+                      value={formData.notes}
+                      onChange={(e) => handleChange('notes', e.target.value)}
+                    />
+                  </div>
+
+                  {/* Tips */}
+                  <div className="p-4 bg-teal-50/50 rounded-xl border border-teal-100">
+                    <div className="flex items-start gap-3">
+                      <HelpCircle className="w-5 h-5 text-teal-600 flex-shrink-0 mt-0.5" />
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium text-teal-800">Pro Tips</p>
+                        <ul className="text-xs text-teal-600 space-y-1 list-disc list-inside">
+                          <li>Set realistic milestones to stay motivated</li>
+                          <li>Break down your action plan into weekly tasks</li>
+                          <li>Review your progress regularly</li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </form>
+              </div>
+
+              {/* Fixed Footer */}
+              <div className="px-6 py-4 border-t flex justify-end gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    resetForm();
+                    setIsGoalDialogOpen(false);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  form="goal-form"
+                  disabled={isSubmitting}
+                  className="bg-teal-600 hover:bg-teal-700 text-white"
+                >
+                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {editingGoal ? 'Update Goal' : 'Create Goal'}
+                </Button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
       </motion.div>
@@ -713,7 +1395,7 @@ function EmptyState({ onAdd, message = "No goals yet" }: { onAdd: () => void; me
   );
 }
 
-// Helper functions
+// Helper functions (these need to be accessible to GoalCard)
 function getGoalIcon(type: GoalType) {
   switch (type) {
     case GoalType.FINANCIAL: return DollarSign;

@@ -1,4 +1,3 @@
-// src/modules/beneficiaries/controllers/tracking.controller.ts
 import {
   Controller,
   Get,
@@ -58,23 +57,7 @@ export class TrackingController {
     );
   }
 
-  @Get()
-  @Roles(UserType.BENEFICIARY, UserType.ADMIN)
-  @ApiOperation({ summary: 'Get tracking history' })
-  @ApiQuery({ name: 'page', required: false })
-  @ApiQuery({ name: 'limit', required: false })
-  @ApiQuery({ name: 'beneficiaryId', required: false, description: 'Required for admin users accessing other beneficiaries' })
-  @ApiResponse({ status: 200, description: 'Tracking history retrieved' })
-  async getTrackingHistory(
-    @CurrentBeneficiary() beneficiary: Beneficiary,
-    @CurrentUser() user: AuthUser,
-    @Query() paginationParams: PaginationParams,
-    @Query('beneficiaryId') beneficiaryId?: string
-  ) {
-    const targetBeneficiaryId = this.getTargetBeneficiaryId(beneficiary, beneficiaryId, user.userType);
-    return this.trackingService.getBeneficiaryTrackings(targetBeneficiaryId, paginationParams);
-  }
-
+  // ================= SPECIFIC ROUTES FIRST =================
   @Get('recent')
   @Roles(UserType.BENEFICIARY, UserType.ADMIN)
   @ApiOperation({ summary: 'Get recent trackings' })
@@ -126,8 +109,7 @@ export class TrackingController {
         beneficiaryId,
         paginationParams || { page: 1, limit: 20 }
       );
-    }
-    
+    }  
     // Otherwise, get all trackings within the date range
     return this.trackingService.getTrackingsByDateRange(
       new Date(startDate),
@@ -135,6 +117,25 @@ export class TrackingController {
       paginationParams || { page: 1, limit: 20 }
     );
   }
+
+  @Get('history')
+  @Roles(UserType.BENEFICIARY, UserType.ADMIN)
+  @ApiOperation({ summary: 'Get tracking history' })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  @ApiQuery({ name: 'beneficiaryId', required: false, description: 'Required for admin users accessing other beneficiaries' })
+  @ApiResponse({ status: 200, description: 'Tracking history retrieved' })
+  async getTrackingHistory(
+    @CurrentBeneficiary() beneficiary: Beneficiary,
+    @CurrentUser() user: AuthUser,
+    @Query() paginationParams: PaginationParams,
+    @Query('beneficiaryId') beneficiaryId?: string
+  ) {
+    const targetBeneficiaryId = this.getTargetBeneficiaryId(beneficiary, beneficiaryId, user.userType);
+    return this.trackingService.getBeneficiaryTrackings(targetBeneficiaryId, paginationParams);
+  }
+
+  // ================= PARAM ROUTES LAST =================
 
   @Get(':id')
   @Roles(UserType.BENEFICIARY, UserType.ADMIN)

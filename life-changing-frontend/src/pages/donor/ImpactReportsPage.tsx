@@ -1,20 +1,23 @@
-﻿import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+﻿// pages/donor/ImpactReportsPage.tsx
+import { useEffect, useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Download, 
-  Eye, 
-  FileText,
-  TrendingUp,
-  Users,
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
   Heart,
-  Target,
   Calendar,
-  MapPin
+  MapPin,
+  BookOpen,
+  Briefcase,
+  Award,
+  Loader2
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import { mockDonors, mockPrograms } from '@/lib/mock-data';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { donationService } from '@/services/donation.service';
+import { programsService } from '@/services/programs.service';
+import { storiesService } from '@/services/stories.service';
+import { Donation, Program, Story, PaymentStatus } from '@/lib/types';
 import {
   BarChart,
   Bar,
@@ -29,455 +32,489 @@ import {
   LineChart,
   Line,
 } from 'recharts';
+import { motion } from 'framer-motion';
+import { format } from 'date-fns';
+import { PageSkeleton } from '@/components/Skeletons';
+
+// Animation variants
+const fadeInUp = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0 }
+};
+
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.1
+    }
+  }
+};
+
+const CHART_COLORS = ['#4c9789', '#eacfa2', '#6fb3a6', '#3a7369', '#d4a5a5', '#9b8c7c'];
+
+const formatCurrency = (amount: number | string) => {
+  const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+  }).format(num);
+};
+
+const formatDate = (date: string | Date) => {
+  return new Date(date).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  });
+};
 
 export default function ImpactReportsPage() {
   const { user } = useAuth();
-  const currentDonor = mockDonors.find(d => d.user.id === user?.id) || mockDonors[0];
+  const [loading, setLoading] = useState(true);
+  const [donations, setDonations] = useState<Donation[]>([]);
+  const [programs, setPrograms] = useState<Program[]>([]);
+  const [stories, setStories] = useState<Story[]>([]);
+  const [programDistribution, setProgramDistribution] = useState<any[]>([]);
+  const [monthlyImpact, setMonthlyImpact] = useState<any[]>([]);
+  const [stats, setStats] = useState({
+    totalDonated: 0,
+    totalDonations: 0,
+    programsSupported: 0,
+    beneficiariesReached: 0,
+    storiesPublished: 0
+  });
 
-  const impactData = {
-    beneficiariesSupported: 5,
-    programsContributed: 3,
-    totalImpact: currentDonor.totalDonated,
-    livesChanged: 12, // Including indirect beneficiaries
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      // Fetch real data from your APIs
+      const [donationsData, programsData, storiesData] = await Promise.all([
+        donationService.getMyDonations(),
+        programsService.getPrograms(1, 100),
+        storiesService.getStories(1, 100)
+      ]);
+
+      // Handle API response structures
+      const donationsList = (donationsData as any).data?.data || donationsData;
+      const programsList = (programsData as any).data?.data || programsData;
+      const storiesList = (storiesData as any).data?.data || storiesData;
+
+      setDonations(Array.isArray(donationsList) ? donationsList : []);
+      setPrograms(Array.isArray(programsList) ? programsList : []);
+      setStories(Array.isArray(storiesList) ? storiesList : []);
+
+      // Process data for charts
+      processImpactData(
+        Array.isArray(donationsList) ? donationsList : [],
+        Array.isArray(programsList) ? programsList : []
+      );
+    } catch (error) {
+      console.error('Failed to fetch impact data', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const programImpact = [
-    { name: 'Education', value: 40, color: '#4c9789' },
-    { name: 'Entrepreneurship', value: 35, color: '#eacfa2' },
-    { name: 'Health', value: 25, color: '#6fb3a6' },
-  ];
+  const processImpactData = (donationsList: Donation[], programsList: Program[]) => {
+    // Calculate statistics
+    const completedDonations = donationsList.filter(d => d.paymentStatus === PaymentStatus.COMPLETED);
+    const totalDonated = completedDonations.reduce((sum, d) => sum + Number(d.amount), 0);
+    
+    // Get unique programs supported
+    const programIds = new Set(completedDonations.map(d => d.program?.id).filter(Boolean));
+    const programsSupported = programIds.size;
 
-  const monthlyImpact = [
-    { month: 'Jan', beneficiaries: 3 },
-    { month: 'Feb', beneficiaries: 3 },
-    { month: 'Mar', beneficiaries: 4 },
-    { month: 'Apr', beneficiaries: 4 },
-    { month: 'May', beneficiaries: 5 },
-    { month: 'Jun', beneficiaries: 5 },
-  ];
+    // Estimate beneficiaries (based on program beneficiaries)
+    let totalBeneficiaries = 0;
+    programsList.forEach(program => {
+      if (programIds.has(program.id)) {
+        totalBeneficiaries += program.beneficiaries?.length || 0;
+      }
+    });
 
-  const reports = [
-    {
-      id: 1,
-      title: 'Q2 2024 Impact Report',
-      period: 'April - June 2024',
-      releaseDate: '2024-07-15',
-      type: 'Quarterly',
-      highlights: [
-        '15 new beneficiaries enrolled',
-        '3 businesses launched',
-        '95% program retention rate',
-      ],
-      fileSize: '3.2 MB',
-    },
-    {
-      id: 2,
-      title: 'Q1 2024 Impact Report',
-      period: 'January - March 2024',
-      releaseDate: '2024-04-15',
-      type: 'Quarterly',
-      highlights: [
-        '12 beneficiaries graduated',
-        '$50,000 in total capital deployed',
-        '8 emergency health interventions',
-      ],
-      fileSize: '2.8 MB',
-    },
-    {
-      id: 3,
-      title: 'Annual Report 2023',
-      period: 'Full Year 2023',
-      releaseDate: '2024-01-30',
-      type: 'Annual',
-      highlights: [
-        '120 young women empowered',
-        '45 businesses established',
-        '98% satisfaction rate',
-      ],
-      fileSize: '5.5 MB',
-    },
-  ];
+    setStats({
+      totalDonated,
+      totalDonations: completedDonations.length,
+      programsSupported,
+      beneficiariesReached: totalBeneficiaries,
+      storiesPublished: stories.length
+    });
 
-  const successStories = [
-    {
-      id: 1,
-      name: 'Grace Uwera',
-      program: 'IkiraroBiz Entrepreneurship',
-      achievement: 'Launched successful tailoring business',
-      impact: 'Now employs 3 other young women',
-      date: '2024-05-20',
-      image: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=200&fit=crop',
-    },
-    {
-      id: 2,
-      name: 'Divine Mukamana',
-      program: 'Girls Education Support',
-      achievement: 'Graduated top of her class',
-      impact: 'Now pursuing university education',
-      date: '2024-04-15',
-      image: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=200&h=200&fit=crop',
-    },
-  ];
+    // Program distribution chart
+    const programMap: { [key: string]: number } = {};
+    completedDonations.forEach(donation => {
+      const programName = donation.program?.name.en || 'General Fund';
+      programMap[programName] = (programMap[programName] || 0) + Number(donation.amount);
+    });
+
+    setProgramDistribution(
+      Object.entries(programMap).map(([name, value], index) => ({
+        name,
+        value,
+        color: CHART_COLORS[index % CHART_COLORS.length]
+      }))
+    );
+
+    // Monthly impact (last 6 months)
+    const months: { [key: string]: { donations: number, amount: number } } = {};
+    const now = new Date();
+    
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthKey = format(date, 'MMM yyyy');
+      months[monthKey] = { donations: 0, amount: 0 };
+    }
+
+    completedDonations.forEach(donation => {
+      const date = new Date(donation.createdAt);
+      const monthKey = format(date, 'MMM yyyy');
+      if (months[monthKey]) {
+        months[monthKey].donations += 1;
+        months[monthKey].amount += Number(donation.amount);
+      }
+    });
+
+    setMonthlyImpact(
+      Object.entries(months).map(([month, data]) => ({
+        month,
+        donations: data.donations,
+        amount: data.amount
+      }))
+    );
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-teal-50/30 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-teal-600" />
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Impact Reports</h1>
-        <p className="text-gray-600">See the real-world impact of your contributions</p>
-      </div>
+    <motion.div
+      initial="hidden"
+      animate="visible"
+      variants={staggerContainer}
+      className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-teal-50/30"
+    >
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 lg:py-8 space-y-6">
 
-      {/* Impact Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="bg-teal-50 text-slate-900">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-teal-700">Beneficiaries Supported</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div className="text-3xl font-bold">{impactData.beneficiariesSupported}</div>
-              <Users className="w-8 h-8 text-teal-600" />
-            </div>
-            <p className="text-xs text-teal-700 mt-1">Direct support</p>
-          </CardContent>
-        </Card>
+        {/* Header */}
+        <motion.div variants={fadeInUp}>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-slate-900 tracking-tight">
+            Your Impact
+          </h1>
+          <p className="text-sm sm:text-base text-slate-500 flex items-center gap-2 mt-1">
+            <Heart className="w-4 h-4" />
+            <span>See the real-world difference your contributions are making</span>
+          </p>
+        </motion.div>
 
-        <Card className="bg-blue-50 text-slate-900">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-blue-700">Lives Changed</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div className="text-3xl font-bold">{impactData.livesChanged}</div>
-              <Heart className="w-8 h-8 text-blue-600" />
-            </div>
-            <p className="text-xs text-blue-700 mt-1">Including families</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-purple-50 text-slate-900">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-purple-700">Programs Supported</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div className="text-3xl font-bold">{impactData.programsContributed}</div>
-              <Target className="w-8 h-8 text-purple-600" />
-            </div>
-            <p className="text-xs text-purple-700 mt-1">Active programs</p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-amber-50 text-slate-900">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-amber-700">Total Impact</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div className="text-3xl font-bold">${impactData.totalImpact.toLocaleString()}</div>
-              <TrendingUp className="w-8 h-8 text-amber-600" />
-            </div>
-            <p className="text-xs text-amber-700 mt-1">Lifetime giving</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Your Impact Distribution</CardTitle>
-            <CardDescription>How your donations are allocated</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <PieChart>
-                <Pie
-                  data={programImpact}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, value }) => `${name}: ${value}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {programImpact.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Beneficiaries Over Time</CardTitle>
-            <CardDescription>Growth in people you've supported</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={monthlyImpact}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                <XAxis dataKey="month" stroke="#666" />
-                <YAxis stroke="#666" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: '#fff',
-                    border: '1px solid #e0e0e0',
-                    borderRadius: '8px',
-                  }}
-                />
-                <Line 
-                  type="monotone" 
-                  dataKey="beneficiaries" 
-                  stroke="#4c9789" 
-                  strokeWidth={2}
-                  name="Beneficiaries"
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Tabs defaultValue="reports" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="reports">Impact Reports</TabsTrigger>
-          <TabsTrigger value="stories">Success Stories</TabsTrigger>
-          <TabsTrigger value="metrics">Key Metrics</TabsTrigger>
-        </TabsList>
-
-        {/* Impact Reports Tab */}
-        <TabsContent value="reports" className="space-y-4">
-          {reports.map((report) => (
-            <Card key={report.id} className="hover:shadow-md transition-shadow">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-4">
-                    <div className="p-3 bg-teal-100 rounded-lg">
-                      <FileText className="w-6 h-6 text-teal-600" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg">{report.title}</CardTitle>
-                      <CardDescription className="mt-1">
-                        <div className="flex items-center gap-4 text-sm">
-                          <span className="flex items-center gap-1">
-                            <Calendar className="w-4 h-4" />
-                            {report.period}
-                          </span>
-                          <span>Released: {new Date(report.releaseDate).toLocaleDateString()}</span>
-                        </div>
-                      </CardDescription>
-                    </div>
-                  </div>
-                  <Badge>{report.type}</Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="font-semibold text-sm mb-2">Key Highlights:</h4>
-                    <ul className="space-y-1">
-                      {report.highlights.map((highlight, idx) => (
-                        <li key={idx} className="flex items-start gap-2 text-sm text-gray-600">
-                          <div className="w-1.5 h-1.5 rounded-full bg-teal-600 mt-1.5 flex-shrink-0" />
-                          <span>{highlight}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div className="flex items-center gap-2 pt-3 border-t">
-                    <Button variant="outline" size="sm">
-                      <Eye className="w-4 h-4 mr-2" />
-                      Preview
-                    </Button>
-                    <Button size="sm" className="bg-teal-600 hover:bg-teal-700">
-                      <Download className="w-4 h-4 mr-2" />
-                      Download ({report.fileSize})
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </TabsContent>
-
-        {/* Success Stories Tab */}
-        <TabsContent value="stories" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Success Stories</CardTitle>
-              <CardDescription>
-                Real stories from beneficiaries your donations have supported
-              </CardDescription>
+        {/* Impact Summary Cards - Using Real Data */}
+        <motion.div variants={fadeInUp} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card className="bg-gradient-to-br from-teal-600 to-teal-700 text-white border-none">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-teal-100">Total Donated</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-6">
-                {successStories.map((story) => (
-                  <div 
-                    key={story.id} 
-                    className="flex gap-4 p-4 border rounded-lg hover:shadow-md transition-shadow"
-                  >
-                    <img 
-                      src={story.image} 
-                      alt={story.name}
-                      className="w-20 h-20 rounded-full object-cover flex-shrink-0"
+              <div className="text-2xl sm:text-3xl font-bold">
+                {formatCurrency(stats.totalDonated)}
+              </div>
+              <p className="text-xs text-teal-200 mt-1">Lifetime contributions</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-slate-500">Donations Made</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl sm:text-3xl font-bold text-teal-600">
+                {stats.totalDonations}
+              </div>
+              <p className="text-xs text-slate-400 mt-1">Individual contributions</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-slate-500">Programs Supported</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl sm:text-3xl font-bold text-purple-600">
+                {stats.programsSupported}
+              </div>
+              <p className="text-xs text-slate-400 mt-1">Active programs</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-slate-500">Beneficiaries Reached</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl sm:text-3xl font-bold text-amber-600">
+                {stats.beneficiariesReached}
+              </div>
+              <p className="text-xs text-slate-400 mt-1">Lives impacted</p>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Charts with Real Data */}
+        <motion.div variants={fadeInUp} className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Donation Distribution</CardTitle>
+              <CardDescription>Where your contributions go</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {programDistribution.length > 0 ? (
+                <ResponsiveContainer width="100%" height={250}>
+                  <PieChart>
+                    <Pie
+                      data={programDistribution}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, value }) => `${name}: ${formatCurrency(value)}`}
+                      outerRadius={80}
+                      dataKey="value"
+                    >
+                      {programDistribution.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-[250px] flex items-center justify-center text-slate-400">
+                  No donation data available
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Monthly Impact</CardTitle>
+              <CardDescription>Your giving over time</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {monthlyImpact.length > 0 ? (
+                <ResponsiveContainer width="100%" height={250}>
+                  <LineChart data={monthlyImpact}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                    <XAxis dataKey="month" stroke="#666" />
+                    <YAxis yAxisId="left" stroke="#666" />
+                    <YAxis yAxisId="right" orientation="right" stroke="#4c9789" />
+                    <Tooltip
+                      formatter={(value: number, name: string) => 
+                        name === 'amount' ? formatCurrency(value) : value
+                      }
+                      contentStyle={{
+                        backgroundColor: '#fff',
+                        border: '1px solid #e0e0e0',
+                        borderRadius: '8px',
+                      }}
                     />
-                    <div className="flex-1">
-                      <div className="flex items-start justify-between mb-2">
+                    <Line 
+                      yAxisId="left"
+                      type="monotone" 
+                      dataKey="donations" 
+                      stroke="#eacfa2" 
+                      strokeWidth={2}
+                      name="Donations"
+                    />
+                    <Line 
+                      yAxisId="right"
+                      type="monotone" 
+                      dataKey="amount" 
+                      stroke="#4c9789" 
+                      strokeWidth={2}
+                      name="Amount"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-[250px] flex items-center justify-center text-slate-400">
+                  No donation history available
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        <Tabs defaultValue="stories" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="stories">Success Stories</TabsTrigger>
+            <TabsTrigger value="programs">Programs You Support</TabsTrigger>
+          </TabsList>
+
+          {/* Success Stories Tab - From Your API */}
+          <TabsContent value="stories" className="space-y-4">
+            {stories.length > 0 ? (
+              stories.map((story) => (
+                <Card key={story.id} className="hover:shadow-md transition-shadow">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-4">
+                        {story.media && story.media.length > 0 && (
+                          <img 
+                            src={story.media[0].url} 
+                            alt={story.title.en}
+                            className="w-16 h-16 rounded-lg object-cover"
+                          />
+                        )}
                         <div>
-                          <h3 className="font-semibold text-lg">{story.name}</h3>
-                          <p className="text-sm text-gray-500">{story.program}</p>
+                          <CardTitle className="text-lg">{story.title.en}</CardTitle>
+                          <CardDescription className="mt-1">
+                            <div className="flex items-center gap-4 text-sm">
+                              <span className="flex items-center gap-1">
+                                <Award className="w-4 h-4" />
+                                By {story.authorName}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Calendar className="w-4 h-4" />
+                                {story.publishedDate ? formatDate(story.publishedDate) : 'Not published'}
+                              </span>
+                            </div>
+                          </CardDescription>
                         </div>
-                        <span className="text-xs text-gray-400">
-                          {new Date(story.date).toLocaleDateString()}
-                        </span>
                       </div>
-                      <p className="text-gray-700 mb-1">
-                        <strong>Achievement:</strong> {story.achievement}
-                      </p>
-                      <p className="text-gray-700 mb-3">
-                        <strong>Impact:</strong> {story.impact}
-                      </p>
+                      <Badge>{story.isPublished ? 'Published' : 'Draft'}</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div 
+                        className="text-sm text-slate-600 line-clamp-3"
+                        dangerouslySetInnerHTML={{ __html: story.content.en }}
+                      />
                       <Button variant="link" className="p-0 h-auto text-teal-600">
                         Read Full Story →
                       </Button>
                     </div>
+                  </CardContent>
+                </Card>
+              ))
+            ) : (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <BookOpen className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                  <p className="text-slate-500">No success stories available yet</p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* Programs You Support Tab */}
+          <TabsContent value="programs" className="space-y-4">
+            {programs.filter(p => 
+              donations.some(d => d.program?.id === p.id && d.paymentStatus === PaymentStatus.COMPLETED)
+            ).length > 0 ? (
+              programs
+                .filter(p => donations.some(d => d.program?.id === p.id && d.paymentStatus === PaymentStatus.COMPLETED))
+                .map((program) => (
+                  <Card key={program.id} className="hover:shadow-md transition-shadow">
+                    <CardHeader>
+                      <div className="flex items-start gap-4">
+                        {program.logo && (
+                          <img 
+                            src={program.logo} 
+                            alt={program.name.en}
+                            className="w-16 h-16 rounded-lg object-cover"
+                          />
+                        )}
+                        <div className="flex-1">
+                          <CardTitle className="text-lg">{program.name.en}</CardTitle>
+                          <CardDescription className="mt-1">
+                            {program.category}
+                          </CardDescription>
+                        </div>
+                        <Badge className={program.status === 'active' ? 'bg-green-100 text-green-700' : ''}>
+                          {program.status}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                          <p className="text-xs text-slate-500">Beneficiaries</p>
+                          <p className="text-lg font-semibold">{program.beneficiaries?.length || 0}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500">Budget</p>
+                          <p className="text-lg font-semibold">{formatCurrency(program.budget)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500">SDG Goals</p>
+                          <p className="text-lg font-semibold">{program.sdgAlignment?.length || 0}</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+            ) : (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <Briefcase className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                  <p className="text-slate-500">You haven't supported any programs yet</p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        </Tabs>
+
+        {/* Geographic Impact - From Program Locations */}
+        <motion.div variants={fadeInUp}>
+          <Card>
+            <CardHeader>
+              <CardTitle>Geographic Impact</CardTitle>
+              <CardDescription>Communities where your support is making a difference</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {programs
+                  .filter(p => donations.some(d => d.program?.id === p.id))
+                  .flatMap(p => p.beneficiaries || [])
+                  .filter((beneficiary, index, self) => 
+                    index === self.findIndex(b => b.location?.district === beneficiary.location?.district)
+                  )
+                  .map((beneficiary, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-5 h-5 text-teal-600" />
+                        <div>
+                          <p className="font-medium">{beneficiary.location?.district || 'Unknown District'}</p>
+                          <p className="text-sm text-slate-500">
+                            {beneficiary.location?.sector || 'Various sectors'}
+                          </p>
+                        </div>
+                      </div>
+                      <Badge variant="outline">Active</Badge>
+                    </div>
+                  ))}
+                
+                {!programs.some(p => p.beneficiaries?.length) && (
+                  <div className="text-center py-8 text-slate-400">
+                    No geographic data available yet
                   </div>
-                ))}
+                )}
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-
-        {/* Key Metrics Tab */}
-        <TabsContent value="metrics" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Education Impact</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Girls kept in school</span>
-                  <span className="font-bold text-2xl text-teal-600">15</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">School supplies provided</span>
-                  <span className="font-bold text-2xl text-teal-600">45</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Tutoring hours</span>
-                  <span className="font-bold text-2xl text-teal-600">120</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Entrepreneurship Impact</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Businesses launched</span>
-                  <span className="font-bold text-2xl text-blue-600">8</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Capital deployed</span>
-                  <span className="font-bold text-2xl text-blue-600">$2,500</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Jobs created</span>
-                  <span className="font-bold text-2xl text-blue-600">12</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Health & Wellbeing</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Health interventions</span>
-                  <span className="font-bold text-2xl text-purple-600">25</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Counseling sessions</span>
-                  <span className="font-bold text-2xl text-purple-600">60</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Hygiene kits distributed</span>
-                  <span className="font-bold text-2xl text-purple-600">180</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Community Impact</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Families reached</span>
-                  <span className="font-bold text-2xl text-green-600">35</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Communities served</span>
-                  <span className="font-bold text-2xl text-green-600">8</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Volunteer hours</span>
-                  <span className="font-bold text-2xl text-green-600">450</span>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-      </Tabs>
-
-      {/* Geographic Impact */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Geographic Impact</CardTitle>
-          <CardDescription>Communities where your support is making a difference</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-3 border rounded-lg">
-              <div className="flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-teal-600" />
-                <div>
-                  <p className="font-medium">Kigali City</p>
-                  <p className="text-sm text-gray-500">3 beneficiaries</p>
-                </div>
-              </div>
-              <Badge>Primary</Badge>
-            </div>
-            <div className="flex items-center justify-between p-3 border rounded-lg">
-              <div className="flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-teal-600" />
-                <div>
-                  <p className="font-medium">Huye District</p>
-                  <p className="text-sm text-gray-500">1 beneficiary</p>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center justify-between p-3 border rounded-lg">
-              <div className="flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-teal-600" />
-                <div>
-                  <p className="font-medium">Musanze District</p>
-                  <p className="text-sm text-gray-500">1 beneficiary</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+        </motion.div>
+      </div>
+    </motion.div>
   );
 }

@@ -1,14 +1,18 @@
-﻿import React, { useState } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { programsService } from '@/services/programs.service';
+import { Program, ProgramCategory } from '@/lib/types';
 import { useLanguage } from '../lib/language-context';
 import { useLegacyScripts } from '../hooks/UseLegacyScripts';
-import { mockPrograms, mockStories } from '../lib/mock-data';
-import { ProgramCategory } from '../lib/types';
+import { mockStories } from '../lib/mock-data';
 import { Users, GraduationCap, Briefcase, Award, Wallet, Heart, TrendingUp, Globe, Handshake, X, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export const HomePage = () => {
     useLegacyScripts();
     const { language, t } = useLanguage();
+
+    const [programs, setPrograms] = useState<Program[]>([]);
+    const [loadingPrograms, setLoadingPrograms] = useState(true);
 
     const [counters, setCounters] = useState({
         women: '5000',
@@ -92,21 +96,80 @@ export const HomePage = () => {
         return () => clearTimeout(timer);
     }, [typingText, isDeleting, phraseIdx, language]);
 
-    // Helper to calculate percentage
-    const getPercentage = (allocated: number = 0, budget: number = 100) => {
-        if (!budget) return 0;
-        return Math.min(100, Math.round((allocated / budget) * 100));
+    // Add this useEffect to fetch programs
+    useEffect(() => {
+        const fetchPrograms = async () => {
+            try {
+                const response = await programsService.getPrograms(1, 3); // Get first 3 programs
+                const responseData = response as any;
+                const programsData = responseData.data?.data || responseData.data || responseData;
+                setPrograms(Array.isArray(programsData) ? programsData : []);
+            } catch (error) {
+                console.error("Failed to fetch programs", error);
+            } finally {
+                setLoadingPrograms(false);
+            }
+        };
+        fetchPrograms();
+    }, []);
+
+    // Add this helper function to get SVG path based on category
+    const getProgramSvgPath = (category: ProgramCategory): string => {
+        const paths = {
+            [ProgramCategory.EDUCATION]: 'M12 14l9-5-9-5-9 5 9 5z M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z M12 14l9-5-9-5-9 5 9 5zm0 0l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z',
+            [ProgramCategory.ENTREPRENEURSHIP]: 'M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6v.01M18 18a4 4 0 01-4 4h-4a4 4 0 01-4-4v-2a2 2 0 012-2h8a2 2 0 012 2v2z',
+            [ProgramCategory.HEALTH]: 'M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z',
+            [ProgramCategory.CROSS_CUTTING]: 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10'
+        };
+        return paths[category] || paths[ProgramCategory.CROSS_CUTTING];
     };
 
-    const getCategoryColor = (category: ProgramCategory) => {
+    // Add this helper function to get color based on category
+    const getProgramColors = (category: ProgramCategory) => {
         const colors = {
-            [ProgramCategory.EDUCATION]: 'text-blue-600 bg-blue-50',
-            [ProgramCategory.ENTREPRENEURSHIP]: 'text-green-600 bg-green-50',
-            [ProgramCategory.HEALTH]: 'text-pink-600 bg-pink-50',
-            [ProgramCategory.CROSS_CUTTING]: 'text-purple-600 bg-purple-50',
+            [ProgramCategory.EDUCATION]: {
+                primary: '#4FB1A1',
+                secondary: '#eacfa2',
+                icon: '#4FB1A1',
+                statusBg: '#eff6ff',
+                statusIcon: '#4FB1A1'
+            },
+            [ProgramCategory.ENTREPRENEURSHIP]: {
+                primary: '#076c5b',
+                secondary: '#4FB1A1',
+                icon: '#076c5b',
+                statusBg: '#076c5b15',
+                statusIcon: '#076c5b'
+            },
+            [ProgramCategory.HEALTH]: {
+                primary: '#ec4899',
+                secondary: '#f9a8d4',
+                icon: '#db2777',
+                statusBg: '#fce7f3',
+                statusIcon: '#be185d'
+            },
+            [ProgramCategory.CROSS_CUTTING]: {
+                primary: '#eacfa2',
+                secondary: '#4FB1A1',
+                icon: '#eacfa2',
+                statusBg: '#eacfa225',
+                statusIcon: '#c4a56e'
+            }
         };
-        return colors[category] || 'text-gray-600 bg-gray-50';
+        return colors[category] || colors[ProgramCategory.CROSS_CUTTING];
     };
+
+    // Add this helper to format currency
+    const formatCurrency = (amount: string | number) => {
+        const num = typeof amount === 'string' ? parseFloat(amount) : amount;
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        }).format(num);
+    };
+
 
     return (
         <>
@@ -541,157 +604,222 @@ export const HomePage = () => {
                     </div>
 
                     <div className="row">
-                        {mockPrograms.map((program, index) => {
-                            const programTitle = program.name[language] || program.name.en;
-                            const programDesc = program.description[language] || program.description.en;
-                            // Map existing data to the new design format using BRAND COLORS
-                            interface ProgramDesignInfo {
-                                svgPath: string;
-                                iconColor: string;
-                                title?: string;       // Added optional title override
-                                description?: string; // Added optional description override
-                                subtitle: string;
-                                featuresTitle: string;
-                                features: string[];
-                                status: string;
-                                statusColor: string;
-                                statusIconColor: string;
-                                borderColor: string;
-                                secondaryBorder: string;
-                            }
-
-                            const programMap: Record<string, ProgramDesignInfo> = {
-                                p1: {
-                                    svgPath: 'M5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82zM12 3L1 9l11 6 9-4.91V17h2V9L12 3z',
-                                    iconColor: '#4FB1A1',
-                                    title: t('programs.p1.title'),
-                                    description: t('programs.p1.description'),
-                                    subtitle: t('programs.p1.subtitle'),
-                                    featuresTitle: t('programs.p1.features_title'),
-                                    features: [t('programs.p1.feature1'), t('programs.p1.feature2'), t('programs.p1.feature3'), t('programs.p1.feature4')],
-                                    status: t('programs.p1.status'),
-                                    statusColor: '#4FB1A115',
-                                    statusIconColor: '#4FB1A1',
-                                    borderColor: '#4FB1A1',
-                                    secondaryBorder: '#eacfa2'
-                                },
-                                p2: {
-                                    svgPath: 'M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zm-6 0h-4V4h4v2z',
-                                    iconColor: '#076c5b',
-                                    title: t('programs.p2.title'),
-                                    description: t('programs.p2.description'),
-                                    subtitle: t('programs.p2.subtitle'),
-                                    featuresTitle: t('programs.p2.features_title'),
-                                    features: [t('programs.p2.feature1'), t('programs.p2.feature2'), t('programs.p2.feature3'), t('programs.p2.feature4')],
-                                    status: t('programs.p2.status'),
-                                    statusColor: '#076c5b15',
-                                    statusIconColor: '#076c5b',
-                                    borderColor: '#076c5b',
-                                    secondaryBorder: '#4FB1A1'
-                                },
-                                p3: {
-                                    svgPath: 'M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z',
-                                    iconColor: '#eacfa2',
-                                    title: t('programs.p3.title'),
-                                    description: t('programs.p3.description'),
-                                    subtitle: t('programs.p3.subtitle'),
-                                    featuresTitle: t('programs.p3.features_title'),
-                                    features: [t('programs.p3.feature1'), t('programs.p3.feature2'), t('programs.p3.feature3'), t('programs.p3.feature4')],
-                                    status: t('programs.p3.status'),
-                                    statusColor: '#eacfa225',
-                                    statusIconColor: '#c4a56e',
-                                    borderColor: '#eacfa2',
-                                    secondaryBorder: '#4FB1A1'
-                                }
-                            };
-
-                            const programInfo = programMap[program.id] || {
-                                svgPath: 'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z',
-                                iconColor: '#4FB1A1',
-                                subtitle: 'Special Initiative',
-                                featuresTitle: 'Highlights:',
-                                features: ['Community impact', 'Sustainable growth', 'Strategic alignment'],
-                                status: 'Ongoing',
-                                statusColor: '#edf2f7',
-                                statusIconColor: '#4a5568',
-                                borderColor: '#4FB1A1',
-                                secondaryBorder: '#076c5b'
-                            };
-
-                            return (
-                                <div className="col-md-6 col-lg-4 ftco-animate mb-5" key={program.id}>
-                                    <div className="program-card overflow-hidden" style={{
-                                        borderRadius: '20px',
-                                        boxShadow: '0 15px 40px rgba(18, 47, 43, 0.06)',
-                                        border: 'none',
-                                        height: '100%',
-                                        position: 'relative'
-                                    }}>
-                                        {/* Dual color top border using BRAND COLORS */}
-                                        <div className="program-card-border d-flex" style={{ height: '5px' }}>
-                                            <div style={{ flex: 1, backgroundColor: programInfo.borderColor }}></div>
-                                            <div style={{ flex: 1, backgroundColor: programInfo.secondaryBorder }}></div>
-                                        </div>
-
-                                        <div className="p-4">
-                                            {/* Header with SVG Icon and Title */}
-                                            <div className="d-flex align-items-center mb-3">
-                                                <div className="mr-3 d-flex align-items-center justify-content-center" style={{
-                                                    width: '40px',
-                                                    height: '40px',
-                                                    flexShrink: 0
-                                                }}>
-                                                    <svg className="program-card-icon" width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                                        <path d={programInfo.svgPath} fill={programInfo.iconColor} />
-                                                    </svg>
-                                                </div>
-                                                <div>
-                                                    <h3 className="program-card-title mb-0" style={{ fontWeight: 800, fontSize: '18px', color: '#122f2b', lineHeight: '1.2' }}>{programInfo.title || programTitle}</h3>
-                                                    <span className="program-card-subtitle" style={{ fontSize: '12px', letterSpacing: '0.3px', color: '#666', fontWeight: 600 }}>{programInfo.subtitle}</span>
-                                                </div>
-                                            </div>
-
-                                            {/* Description */}
-                                            <p className="program-card-desc mb-3" style={{ color: '#444', fontSize: '14px', lineHeight: '1.7' }}>
-                                                {programInfo.description || programDesc}
-                                            </p>
-
-                                            {/* Features Section */}
-                                            <div className="program-card-features-box mb-4 p-3" style={{ backgroundColor: '#f9fbfb', borderRadius: '14px', border: '1px solid #eef2f2' }}>
-                                                <h4 className="program-card-features-title mb-2" style={{ fontSize: '13px', fontWeight: 700, color: '#122f2b' }}>{programInfo.featuresTitle}</h4>
-                                                <ul className="list-unstyled mb-0">
-                                                    {programInfo.features.map((feature: string, fIndex: number) => (
-                                                        <li key={fIndex} className="d-flex align-items-start mb-1" style={{ fontSize: '13px' }}>
-                                                            <span className="program-card-feature-dot mr-2 mt-1" style={{ width: '6px', height: '6px', backgroundColor: programInfo.borderColor, borderRadius: '50%', flexShrink: 0, display: 'inline-block' }}></span>
-                                                            <span className="program-card-feature-text" style={{ lineHeight: '1.5', color: '#555' }}>{feature}</span>
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            </div>
-
-                                            {/* Footer with Badge */}
-                                            <div className="d-flex justify-content-center">
-                                                <div className="program-card-status px-3 py-1 d-flex align-items-center" style={{
-                                                    backgroundColor: programInfo.statusColor,
-                                                    borderRadius: '50px',
-                                                    fontSize: '12px',
-                                                    fontWeight: '700',
-                                                    color: programInfo.statusIconColor
-                                                }}>
-                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="mr-2">
-                                                        <path d="M7 2v11h3v9l7-12h-4l4-8z" fill={programInfo.statusIconColor} />
-                                                    </svg>
-                                                    {programInfo.status}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+                        {loadingPrograms ? (
+                            <div className="col-12 text-center py-5">
+                                <div className="spinner-border text-primary" role="status">
+                                    <span className="sr-only">Loading...</span>
                                 </div>
-                            );
-                        })}
+                            </div>
+                        ) : programs.length === 0 ? (
+                            <div className="col-12 text-center py-5">
+                                <p className="text-muted">No programs available at the moment.</p>
+                            </div>
+                        ) : (
+                            programs.map((program, index) => {
+                                const colors = getProgramColors(program.category);
+                                const svgPath = getProgramSvgPath(program.category);
+                                const programTitle = program.name[language] || program.name.en;
+                                const programDesc = program.description[language] || program.description.en;
+                                const progress = program.budget > 0
+                                    ? Math.round((Number(program.fundsUtilized || 0) / Number(program.budget)) * 100)
+                                    : 0;
+
+                                return (
+                                    <div className="col-md-6 col-lg-4 ftco-animate mb-5" key={program.id}>
+                                        <Link to={`/programs/${program.id}`} className="text-decoration-none">
+                                            <div className="program-card overflow-hidden" style={{
+                                                borderRadius: '20px',
+                                                boxShadow: '0 15px 40px rgba(18, 47, 43, 0.06)',
+                                                border: 'none',
+                                                height: '100%',
+                                                position: 'relative',
+                                                cursor: 'pointer',
+                                                transition: 'transform 0.3s ease, box-shadow 0.3s ease'
+                                            }}
+                                                onMouseEnter={(e) => {
+                                                    e.currentTarget.style.transform = 'translateY(-5px)';
+                                                    e.currentTarget.style.boxShadow = '0 25px 50px rgba(18, 47, 43, 0.12)';
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.currentTarget.style.transform = 'translateY(0)';
+                                                    e.currentTarget.style.boxShadow = '0 15px 40px rgba(18, 47, 43, 0.06)';
+                                                }}>
+                                                {/* Dual color top border */}
+                                                <div className="program-card-border d-flex" style={{ height: '5px' }}>
+                                                    <div style={{ flex: 1, backgroundColor: colors.primary }}></div>
+                                                    <div style={{ flex: 1, backgroundColor: colors.secondary }}></div>
+                                                </div>
+
+                                                {/* Cover Image (if exists) */}
+                                                {program.coverImage && (
+                                                    <div style={{
+                                                        height: '120px',
+                                                        overflow: 'hidden',
+                                                        borderTopLeftRadius: '20px',
+                                                        borderTopRightRadius: '20px'
+                                                    }}>
+                                                        <img
+                                                            src={program.coverImage}
+                                                            alt={programTitle}
+                                                            style={{
+                                                                width: '100%',
+                                                                height: '100%',
+                                                                objectFit: 'cover',
+                                                                transition: 'transform 0.5s ease'
+                                                            }}
+                                                            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+                                                            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                                                        />
+                                                    </div>
+                                                )}
+
+                                                <div className="p-4">
+                                                    {/* Header with Logo/Icon and Title */}
+                                                    <div className="d-flex align-items-center mb-3">
+                                                        {program.logo ? (
+                                                            <img
+                                                                src={program.logo}
+                                                                alt={programTitle}
+                                                                className="mr-3 rounded-circle"
+                                                                style={{
+                                                                    width: '40px',
+                                                                    height: '40px',
+                                                                    objectFit: 'cover',
+                                                                    border: `2px solid ${colors.primary}`
+                                                                }}
+                                                            />
+                                                        ) : (
+                                                            <div className="mr-3 d-flex align-items-center justify-content-center" style={{
+                                                                width: '40px',
+                                                                height: '40px',
+                                                                flexShrink: 0,
+                                                                backgroundColor: colors.statusBg,
+                                                                borderRadius: '50%'
+                                                            }}>
+                                                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                                    <path d={svgPath} fill={colors.icon} />
+                                                                </svg>
+                                                            </div>
+                                                        )}
+                                                        <div>
+                                                            <h3 className="program-card-title mb-0" style={{
+                                                                fontWeight: 800,
+                                                                fontSize: '18px',
+                                                                color: '#122f2b',
+                                                                lineHeight: '1.2'
+                                                            }}>
+                                                                {programTitle}
+                                                            </h3>
+                                                            <span className="program-card-subtitle" style={{
+                                                                fontSize: '12px',
+                                                                letterSpacing: '0.3px',
+                                                                color: '#666',
+                                                                fontWeight: 600
+                                                            }}>
+                                                                {program.category.replace('_', ' ')}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Description (truncated) */}
+                                                    <p className="program-card-desc mb-3" style={{
+                                                        color: '#444',
+                                                        fontSize: '14px',
+                                                        lineHeight: '1.7',
+                                                        display: '-webkit-box',
+                                                        WebkitLineClamp: 2,
+                                                        WebkitBoxOrient: 'vertical',
+                                                        overflow: 'hidden'
+                                                    }}>
+                                                        {programDesc.replace(/<[^>]*>/g, '').substring(0, 150)}...
+                                                    </p>
+
+                                                    {/* Key Stats */}
+                                                    <div className="program-card-features-box mb-4 p-3" style={{
+                                                        backgroundColor: '#f9fbfb',
+                                                        borderRadius: '14px',
+                                                        border: '1px solid #eef2f2'
+                                                    }}>
+                                                        <h4 className="program-card-features-title mb-2" style={{
+                                                            fontSize: '13px',
+                                                            fontWeight: 700,
+                                                            color: '#122f2b'
+                                                        }}>
+                                                            Key Stats:
+                                                        </h4>
+                                                        <ul className="list-unstyled mb-0">
+                                                            <li className="d-flex align-items-start mb-1" style={{ fontSize: '13px' }}>
+                                                                <span className="program-card-feature-dot mr-2 mt-1" style={{
+                                                                    width: '6px',
+                                                                    height: '6px',
+                                                                    backgroundColor: colors.primary,
+                                                                    borderRadius: '50%',
+                                                                    flexShrink: 0,
+                                                                    display: 'inline-block'
+                                                                }}></span>
+                                                                <span className="program-card-feature-text" style={{ lineHeight: '1.5', color: '#555' }}>
+                                                                    Budget: {formatCurrency(program.budget)}
+                                                                </span>
+                                                            </li>
+                                                            <li className="d-flex align-items-start mb-1" style={{ fontSize: '13px' }}>
+                                                                <span className="program-card-feature-dot mr-2 mt-1" style={{
+                                                                    width: '6px',
+                                                                    height: '6px',
+                                                                    backgroundColor: colors.primary,
+                                                                    borderRadius: '50%',
+                                                                    flexShrink: 0,
+                                                                    display: 'inline-block'
+                                                                }}></span>
+                                                                <span className="program-card-feature-text" style={{ lineHeight: '1.5', color: '#555' }}>
+                                                                    Progress: {progress}%
+                                                                </span>
+                                                            </li>
+                                                            {program.sdgAlignment && program.sdgAlignment.length > 0 && (
+                                                                <li className="d-flex align-items-start mb-1" style={{ fontSize: '13px' }}>
+                                                                    <span className="program-card-feature-dot mr-2 mt-1" style={{
+                                                                        width: '6px',
+                                                                        height: '6px',
+                                                                        backgroundColor: colors.primary,
+                                                                        borderRadius: '50%',
+                                                                        flexShrink: 0,
+                                                                        display: 'inline-block'
+                                                                    }}></span>
+                                                                    <span className="program-card-feature-text" style={{ lineHeight: '1.5', color: '#555' }}>
+                                                                        SDG: {program.sdgAlignment.join(', ')}
+                                                                    </span>
+                                                                </li>
+                                                            )}
+                                                        </ul>
+                                                    </div>
+
+                                                    {/* Footer with Status Badge */}
+                                                    <div className="d-flex justify-content-between align-items-center">
+                                                        <div className="program-card-status px-3 py-1 d-flex align-items-center" style={{
+                                                            backgroundColor: colors.statusBg,
+                                                            borderRadius: '50px',
+                                                            fontSize: '12px',
+                                                            fontWeight: '700',
+                                                            color: colors.statusIcon
+                                                        }}>
+                                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="mr-2">
+                                                                <path d="M7 2v11h3v9l7-12h-4l4-8z" fill={colors.statusIcon} />
+                                                            </svg>
+                                                            {program.status}
+                                                        </div>
+                                                        <Link to={`/programs/${program.id}`} className="text-primary small font-weight-bold text-decoration-none">
+                                                            View Details →
+                                                        </Link>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </Link>
+                                    </div>
+                                );
+                            })
+                        )}
                     </div>
 
-                    <div className="text-center mt-4">
+                    {/* <div className="text-center mt-4">
                         <Link to="/about" className="btn px-5 py-3 font-weight-bold shadow-lg" style={{
                             borderRadius: '50px',
                             letterSpacing: '1px',
@@ -700,7 +828,7 @@ export const HomePage = () => {
                         }}>
                             {t('home.programs_view_all')}
                         </Link>
-                    </div>
+                    </div> */}
                 </div>
             </section>
 

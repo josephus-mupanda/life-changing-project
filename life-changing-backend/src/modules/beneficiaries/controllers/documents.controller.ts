@@ -1,4 +1,3 @@
-// src/modules/beneficiaries/controllers/documents.controller.ts
 import {
   Controller,
   Get,
@@ -77,7 +76,72 @@ export class DocumentsController {
 
     throw new BadRequestException('Invalid user type');
   }
-  // ================= SINGLE DOCUMENT UPLOAD =================
+
+  // ================= STATS ROUTES (SPECIFIC) FIRST =================
+  @Get('stats/summary')
+  @Roles(UserType.BENEFICIARY, UserType.ADMIN)
+  @ApiOperation({ summary: 'Get document statistics' })
+  @ApiQuery({
+    name: 'beneficiaryId',
+    required: false,
+    type: String,
+    description: 'Required for admin users'
+  })
+  async getDocumentStats(
+    @CurrentBeneficiary() beneficiary: Beneficiary,
+    @Req() req,
+    @Query('beneficiaryId') queryBeneficiaryId?: string,
+  ) {
+    const beneficiaryId = await this.getBeneficiaryId(
+      req,
+      beneficiary,
+      queryBeneficiaryId
+    );
+    return this.documentsService.getDocumentStats(beneficiaryId);
+  }
+
+  // ================= RECENT DOCUMENTS ROUTE (SPECIFIC) =================
+  @Get('recent/list')
+  @Roles(UserType.BENEFICIARY, UserType.ADMIN)
+  @ApiOperation({ summary: 'Get recent documents' })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({
+    name: 'beneficiaryId',
+    required: false,
+    type: String,
+    description: 'Required for admin users'
+  })
+  async getRecentDocuments(
+    @CurrentBeneficiary() beneficiary: Beneficiary,
+    @Req() req,
+    @Query('limit') limit?: number,
+    @Query('beneficiaryId') queryBeneficiaryId?: string,
+  ) {
+    const beneficiaryId = await this.getBeneficiaryId(
+      req,
+      beneficiary,
+      queryBeneficiaryId
+    );
+    return this.documentsService.getRecentDocuments(beneficiaryId, limit);
+  }
+
+  // ================= ADMIN ENDPOINT (SPECIFIC) =================
+  @Get('admin/beneficiary/:beneficiaryId')
+  @Roles(UserType.ADMIN)
+  @ApiOperation({ summary: 'Get documents by beneficiary ID (admin only)' })
+  async getDocumentsByBeneficiaryId(
+    @Param('beneficiaryId') beneficiaryId: string,
+    @Query() paginationParams: PaginationParams,
+    @Query() filter: DocumentFilterDto,
+  ) {
+    return this.documentsService.getBeneficiaryDocuments(
+      beneficiaryId,
+      paginationParams,
+      filter,
+    );
+  }
+
+  // ================= UPLOAD ROUTES =================
   @Post('upload')
   @Roles(UserType.BENEFICIARY, UserType.ADMIN)
   @ApiConsumes('multipart/form-data')
@@ -173,7 +237,6 @@ export class DocumentsController {
     );
   }
 
-  // ================= MULTIPLE DOCUMENTS UPLOAD =================
   @Post('upload/multiple')
   @Roles(UserType.BENEFICIARY,UserType.ADMIN)
   @ApiConsumes('multipart/form-data')
@@ -273,137 +336,7 @@ export class DocumentsController {
     };
   }
 
-  // ================= GET DOCUMENTS =================
-  @Get()
-  @Roles(UserType.BENEFICIARY, UserType.ADMIN)
-  @ApiOperation({ summary: 'Get beneficiary documents with filters' })
-  @ApiQuery({ name: 'page', required: false, type: Number })
-  @ApiQuery({ name: 'limit', required: false, type: Number })
-  @ApiQuery({ name: 'documentType', required: false, enum: DocumentType })
-  @ApiQuery({ name: 'verified', required: false, type: Boolean })
-  @ApiQuery({ name: 'search', required: false, type: String })
-  @ApiQuery({
-    name: 'beneficiaryId',
-    required: false,
-    type: String,
-    description: 'Required for admin users'
-  })
-  async getDocuments(
-    @CurrentBeneficiary() beneficiary: Beneficiary,
-    @Req() req,
-    @Query() paginationParams: PaginationParams,
-    @Query() filter: DocumentFilterDto,
-    @Query('beneficiaryId') queryBeneficiaryId?: string,
-
-  ) {
-    const beneficiaryId = await this.getBeneficiaryId(
-      req,
-      beneficiary,
-      queryBeneficiaryId
-    );
-
-    return this.documentsService.getBeneficiaryDocuments(
-      beneficiaryId,
-      paginationParams,
-      filter,
-    );
-  }
-
-  // ================= GET DOCUMENT BY ID =================
-  @Get(':id')
-  @Roles(UserType.BENEFICIARY, UserType.ADMIN)
-  @ApiOperation({ summary: 'Get document by ID' })
-  @ApiQuery({
-    name: 'beneficiaryId',
-    required: false,
-    type: String,
-    description: 'Required for admin users'
-  })
-  async getDocumentById(
-    @CurrentBeneficiary() beneficiary: Beneficiary,
-    @Req() req,
-    @Param('id') id: string,
-    @Query('beneficiaryId') queryBeneficiaryId?: string,
-  ) {
-
-    const beneficiaryId = await this.getBeneficiaryId(
-      req,
-      beneficiary,
-      queryBeneficiaryId
-    );
-
-    return this.documentsService.validateDocumentBelongsToBeneficiary(id, beneficiaryId);
-  }
-
-  // ================= GET DOCUMENT STATISTICS =================
-  @Get('stats/summary')
-  @Roles(UserType.BENEFICIARY, UserType.ADMIN)
-  @ApiOperation({ summary: 'Get document statistics' })
-  @ApiQuery({
-    name: 'beneficiaryId',
-    required: false,
-    type: String,
-    description: 'Required for admin users'
-  })
-  async getDocumentStats(
-    @CurrentBeneficiary() beneficiary: Beneficiary,
-    @Req() req,
-    @Query('beneficiaryId') queryBeneficiaryId?: string,
-  ) {
-    const beneficiaryId = await this.getBeneficiaryId(
-      req,
-      beneficiary,
-      queryBeneficiaryId
-    );
-    return this.documentsService.getDocumentStats(beneficiaryId);
-  }
-
-  // ================= GET RECENT DOCUMENTS =================
-  @Get('recent/list')
-  @Roles(UserType.BENEFICIARY, UserType.ADMIN)
-  @ApiOperation({ summary: 'Get recent documents' })
-  @ApiQuery({ name: 'limit', required: false, type: Number })
-  @ApiQuery({
-    name: 'beneficiaryId',
-    required: false,
-    type: String,
-    description: 'Required for admin users'
-  })
-  async getRecentDocuments(
-    @CurrentBeneficiary() beneficiary: Beneficiary,
-    @Req() req,
-    @Query('limit') limit?: number,
-    @Query('beneficiaryId') queryBeneficiaryId?: string,
-  ) {
-    const beneficiaryId = await this.getBeneficiaryId(
-      req,
-      beneficiary,
-      queryBeneficiaryId
-    );
-    return this.documentsService.getRecentDocuments(beneficiaryId, limit);
-  }
-
-  // ================= VERIFY DOCUMENT =================
-  @Patch(':documentId/verify')
-  @Roles(UserType.ADMIN)
-  @ApiOperation({ summary: 'Verify document (admin only)' })
-  async verifyDocument(
-    @Param('documentId') documentId: string,
-    @Body() verifyDto: VerifyDocumentDto,
-    @Req() req,
-  ) {
-    return this.documentsService.verifyDocument(documentId, req.user.id, verifyDto);
-  }
-
-  // ================= UNVERIFY DOCUMENT =================
-  @Patch(':documentId/unverify')
-  @Roles(UserType.ADMIN)
-  @ApiOperation({ summary: 'Unverify document (admin only)' })
-  async unverifyDocument(@Param('documentId') documentId: string) {
-    return this.documentsService.unverifyDocument(documentId);
-  }
-
-  // ================= BULK VERIFY DOCUMENTS =================
+  // ================= BULK VERIFY ROUTE (SPECIFIC) =================
   @Post('verify/bulk')
   @Roles(UserType.ADMIN)
   @ApiOperation({ summary: 'Bulk verify documents (admin only)' })
@@ -439,22 +372,7 @@ export class DocumentsController {
     return { message: `Successfully verified ${count} document(s)` };
   }
 
-  // ================= DELETE DOCUMENT =================
-  @Delete(':id')
-  @Roles(UserType.BENEFICIARY, UserType.ADMIN)
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Delete a single document' })
-  @ApiQuery({
-    name: 'documentId',
-    required: true,
-    type: String,
-    description: 'Document ID to delete'
-  })
-  async deleteDocument(@Query('documentId') documentId: string) {
-    await this.documentsService.deleteDocument(documentId);
-  }
-
-  // ================= BULK DELETE DOCUMENTS =================
+  // ================= BULK DELETE ROUTE (SPECIFIC) =================
   @Delete('bulk/delete')
   @Roles(UserType.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
@@ -485,7 +403,7 @@ export class DocumentsController {
     return { message: `Successfully deleted ${count} document(s)` };
   }
 
-  // ================= DELETE ALL BENEFICIARY DOCUMENTS =================
+  // ================= DELETE ALL BENEFICIARY DOCUMENTS (SPECIFIC) =================
   @Delete('beneficiary/all')
   @Roles(UserType.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
@@ -495,20 +413,97 @@ export class DocumentsController {
     return { message: `Successfully deleted ${count} document(s)` };
   }
 
-  // ================= ADMIN ENDPOINT WITH QUERY PARAM =================
-
-  @Get('admin/beneficiary/:beneficiaryId')
-  @Roles(UserType.ADMIN)
-  @ApiOperation({ summary: 'Get documents by beneficiary ID (admin only)' })
-  async getDocumentsByBeneficiaryId(
-    @Param('beneficiaryId') beneficiaryId: string,
+  // ================= GET DOCUMENTS (BASE ROUTE WITH /all) =================
+  @Get('all')
+  @Roles(UserType.BENEFICIARY, UserType.ADMIN)
+  @ApiOperation({ summary: 'Get beneficiary documents with filters' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'documentType', required: false, enum: DocumentType })
+  @ApiQuery({ name: 'verified', required: false, type: Boolean })
+  @ApiQuery({ name: 'search', required: false, type: String })
+  @ApiQuery({
+    name: 'beneficiaryId',
+    required: false,
+    type: String,
+    description: 'Required for admin users'
+  })
+  async getDocuments(
+    @CurrentBeneficiary() beneficiary: Beneficiary,
+    @Req() req,
     @Query() paginationParams: PaginationParams,
     @Query() filter: DocumentFilterDto,
+    @Query('beneficiaryId') queryBeneficiaryId?: string,
+
   ) {
+    const beneficiaryId = await this.getBeneficiaryId(
+      req,
+      beneficiary,
+      queryBeneficiaryId
+    );
+
     return this.documentsService.getBeneficiaryDocuments(
       beneficiaryId,
       paginationParams,
       filter,
     );
+  }
+
+  // ================= PARAM ROUTES LAST =================
+  @Get(':id')
+  @Roles(UserType.BENEFICIARY, UserType.ADMIN)
+  @ApiOperation({ summary: 'Get document by ID' })
+  @ApiQuery({
+    name: 'beneficiaryId',
+    required: false,
+    type: String,
+    description: 'Required for admin users'
+  })
+  async getDocumentById(
+    @CurrentBeneficiary() beneficiary: Beneficiary,
+    @Req() req,
+    @Param('id') id: string,
+    @Query('beneficiaryId') queryBeneficiaryId?: string,
+  ) {
+
+    const beneficiaryId = await this.getBeneficiaryId(
+      req,
+      beneficiary,
+      queryBeneficiaryId
+    );
+
+    return this.documentsService.validateDocumentBelongsToBeneficiary(id, beneficiaryId);
+  }
+
+  @Patch(':documentId/verify')
+  @Roles(UserType.ADMIN)
+  @ApiOperation({ summary: 'Verify document (admin only)' })
+  async verifyDocument(
+    @Param('documentId') documentId: string,
+    @Body() verifyDto: VerifyDocumentDto,
+    @Req() req,
+  ) {
+    return this.documentsService.verifyDocument(documentId, req.user.id, verifyDto);
+  }
+
+  @Patch(':documentId/unverify')
+  @Roles(UserType.ADMIN)
+  @ApiOperation({ summary: 'Unverify document (admin only)' })
+  async unverifyDocument(@Param('documentId') documentId: string) {
+    return this.documentsService.unverifyDocument(documentId);
+  }
+
+  @Delete(':id')
+  @Roles(UserType.BENEFICIARY, UserType.ADMIN)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete a single document' })
+  @ApiQuery({
+    name: 'documentId',
+    required: true,
+    type: String,
+    description: 'Document ID to delete'
+  })
+  async deleteDocument(@Query('documentId') documentId: string) {
+    await this.documentsService.deleteDocument(documentId);
   }
 }

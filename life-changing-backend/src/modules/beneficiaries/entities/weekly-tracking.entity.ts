@@ -5,6 +5,7 @@ import {
   JoinColumn,
   CreateDateColumn,
   ManyToOne,
+  UpdateDateColumn,
 } from 'typeorm';
 import { Beneficiary } from './beneficiary.entity';
 import { Staff } from '../../admin/entities/staff.entity';
@@ -75,7 +76,7 @@ export class WeeklyTracking {
   @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'submitted_by' })
   submittedBy: User;
-  
+
   @Column({
     name: 'submitted_by_type',
     type: 'enum',
@@ -100,7 +101,10 @@ export class WeeklyTracking {
   };
 
   @CreateDateColumn({ name: 'submitted_at' })
-  submittedAt: Date;
+  createdAt: Date;
+
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date;
 
   @Column({ name: 'verified_at', type: 'timestamp', nullable: true })
   verifiedAt: Date;

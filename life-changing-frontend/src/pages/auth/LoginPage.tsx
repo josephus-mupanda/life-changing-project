@@ -1,5 +1,5 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { useAuth } from '../lib/auth-context';
+import { useAuth } from '../../lib/auth-context';
 import { useSearchParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { UserType } from '@/lib/types';
 import { ArrowLeft, Eye, EyeOff, User, Heart } from 'lucide-react';
